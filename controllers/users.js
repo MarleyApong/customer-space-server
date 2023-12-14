@@ -36,11 +36,11 @@ exports.getAllUsers = async (req, res, next) => {
             }
 
       const users = await Users.findAndCountAll({
-         attributes: { exclude: ['idRole', 'idEnv', 'idStatus', 'password'] },
+         attributes: { exclude: ['password'] },
          include: [
-            { model: Status, attributes: ['id', 'name'] },
-            { model: Roles, attributes: ['id', 'name'] },
-            { model: Envs, attributes: ['id', 'name'] },
+            // { model: Status, attributes: ['id', 'name'] },
+            // { model: Roles, attributes: ['id', 'name'] },
+            // { model: Envs, attributes: ['id', 'name'] },
             // {
             //    model: Organizations, include: [
             //       { model: Companies }
@@ -78,16 +78,6 @@ exports.getOneUser = async (req, res, next) => {
       if (!id) throw new customError('MissingParams', 'Missing Parameters')
 
       let user = await Users.findOne({
-         include: [
-            { model: Status, attributes: ['id', 'name'], where: { id: status } },
-            { model: Roles, attributes: ['id', 'name'], where: { id: role } },
-            { model: Envs, attributes: ['id', 'name'], where: { id: role } },
-            // {
-            //    model: Organizations, include: [
-            //       { model: Companies }
-            //    ]
-            // }
-         ],
          where: { id: id }
       })
       if (!user) throw new customError('NotFound', `${label} does not exist`)
