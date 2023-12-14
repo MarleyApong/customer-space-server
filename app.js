@@ -10,6 +10,7 @@ const errorHandler = require('./middlewares/errorHandler')
 const authRouter = require('./routes/auth')
 const usersRouter = require('./routes/users')
 const organizationsRouter = require('./routes/organizations')
+const companiesRouter = require('./routes/companies')
 
 const app = express()
 const corsOption = {
@@ -37,6 +38,7 @@ app.get('/', (req, res) => {
 app.use('/auth', authRouter)
 app.use('/users', usersRouter)
 app.use('/organizations', organizationsRouter)
+app.use('/companies', companiesRouter)
 
 // SYNCHRONIZATION
 const init = async () => {

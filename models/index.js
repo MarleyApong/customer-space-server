@@ -3,7 +3,7 @@ const db = {}
 
 db.Answers = require('./answers')(sequelize)
 db.AnswersCustomers = require('./answersCustomers')(sequelize)
-db.Companies = require('./answers')(sequelize)
+db.Companies = require('./companies')(sequelize)
 db.Customers = require('./customers')(sequelize)
 db.Envs = require('./envs')(sequelize)
 db.LogsUsers = require('./logsUsers')(sequelize)

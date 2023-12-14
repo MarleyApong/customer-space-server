@@ -16,23 +16,17 @@ module.exports = (sequelize) => {
         },
         name: {
             type: DataTypes.STRING(30),
-            defaultValue: '',
             allowNull: false
         },
         description: {
             type: DataTypes.TEXT,
-            defaultValue: '',
             allowNull: false
         },
-        image: {
+        picture: {
             type: DataTypes.STRING,
-            defaultValue: '',
-            allowNull: true
         },
         category: {
-            type: DataTypes.STRING(30),
-            defaultValue: '',
-            allowNull: false
+            type: DataTypes.STRING(50)
         },
         phone: {
             type: DataTypes.STRING(15),
@@ -41,20 +35,16 @@ module.exports = (sequelize) => {
         },
         email: {
             type: DataTypes.STRING,
-            defaultValue: '',
-            allowNull: false,
             validate: {
                 isEmail: true  // VALIDATE EMAIL DATA 
             }
         },
         city: {
             type: DataTypes.STRING(100),
-            defaultValue: '',
             allowNull: false
         },
         neighborhood: {
             type: DataTypes.STRING(100),
-            defaultValue: '',
             allowNull: false
         }
     }, { paranoid: true })

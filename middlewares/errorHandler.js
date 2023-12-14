@@ -1,5 +1,5 @@
 module.exports = (err, req, res, next) => {
-   let debugLevel = 0
+   let debugLevel = 1
    let debugMessage = "Limit error return by the supervisor. Contact him for more details on the problem !"
    let status = 500
    let message = "Internal server error"
