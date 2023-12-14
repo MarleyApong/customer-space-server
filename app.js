@@ -36,7 +36,7 @@ app.get('/', (req, res) => {
 })
 app.use('/auth', authRouter)
 app.use('/users', usersRouter)
-app.use('/organizations', usersRouter)
+app.use('/organizations', organizationsRouter)
 
 // SYNCHRONIZATION
 const init = async () => {

@@ -9,6 +9,10 @@ module.exports = (err, req, res, next) => {
       message = 'Database connection error'
       status = 400
    }
+   else if (err.name === 'RegexPasswordValidationError') {
+      message = err.message
+      status = 400
+   }
    else if (err.name === 'MissingData') {
       message = err.message
       status = 400

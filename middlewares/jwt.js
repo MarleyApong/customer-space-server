@@ -15,20 +15,24 @@ const extractBearer = (authorization) => {
 
 // TOKEN IS PRESENT ?
 const checkTokenMiddleware = (req, res, next) => {
-   const token = req.headers.authorization && extractBearer(req.headers.authorization)
-   const privateKey = fs.readFileSync(path.join(__dirname, "../privateKey.key"))
-   if (!token) {
-      return res.status(401).json({ message: 'Missing token' })
-   }
-
-   jwt.verify(token, privateKey, (err, decodedToken) => {
-      if (err) {
-         return res.status(401).json({ message: 'Bad token' })
+   const open = 0
+   if (open === 1) {
+      const token = req.headers.authorization && extractBearer(req.headers.authorization)
+      const privateKey = fs.readFileSync(path.join(__dirname, "../privateKey.key"))
+      if (!token) {
+         return res.status(401).json({ message: 'Missing token' })
       }
-      // console.log('decodedToken', decodedToken)
 
-      next()
-   })
+      jwt.verify(token, privateKey, (err, decodedToken) => {
+         if (err) {
+            return res.status(401).json({ message: 'Bad token' })
+         }
+         // console.log('decodedToken', decodedToken)
+
+         next()
+      })
+   }
+   next()
 }
 
 module.exports = checkTokenMiddleware
