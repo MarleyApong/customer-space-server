@@ -2,10 +2,10 @@ const { Op } = require('sequelize')
 const { v4: uuid } = require('uuid')
 const fs = require('fs')
 const multer = require('multer')
-const { Organizations, Companies } = require('../models')
+const { Surveys, Users, UsersSurveys, Questions } = require('../models')
 const customError = require('../hooks/customError')
 
-var label = "Organization"
+const label = "Survey"
 
 // ROUTING RESSOURCE
 // GET ALL
@@ -40,9 +40,9 @@ exports.getAll = async (req, res, next) => {
             }
         }
 
-        const data = await Organizations.findAndCountAll({
+        const data = await Surveys.findAndCountAll({
             where: whereClause,
-            include: [Companies],
+            include: [Questions],
             limit: limit,
             offset: page * limit,
             order: [[filter, sort]],
@@ -73,10 +73,7 @@ exports.getOne = async (req, res, next) => {
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'Missing Parameter')
 
-        const data = await Organizations.findOne({ 
-            where: { id: id },
-            include: [Companies], 
-        })
+        const data = await Surveys.findOne({ where: { id: id } })
         if (!data) throw new customError('NotFound', `${label} does not exist`)
 
         return res.json({ content: data })
@@ -88,29 +85,31 @@ exports.getOne = async (req, res, next) => {
 // CREATE
 exports.add = async (req, res, next) => {
     try {
-        const { idStatus, name, description, phone, city, neighborhood } = req.body
+        const { idUser, idStatus, name } = req.body
         const id = uuid()
-        if (!idStatus || !name || !description || !phone || !city || !neighborhood)
-            throw new customError('MissingData', 'Missing Data')
-
-        let data = await Organizations.findOne({ where: { id: id } })
+        if (!idUser || !idStatus || !name) throw new customError('MissingData', 'Missing Data')
+        let data = await Surveys.findOne({ where: { id: id } })
         if (data) throw new customError('AlreadtExist', `This ${label} already exists`)
 
-        let picture
-        if (req.file) picture = req.file.path
-
-        data = await Organizations.create({
+        data = await Users.findOne({ where: { id: idUser } })
+        if (!data) if (data) throw new customError('NotFound', `${label} not created because the user with id: ${idUser} does not exist`)
+        data = await Surveys.create({
             id: id,
             idStatus: idStatus,
             name: name,
-            description: description,
-            picture: picture,
-            phone: phone,
-            city: city,
-            neighborhood: neighborhood
         })
-
         if (!data) throw new customError('BadRequest', `${label} not created`)
+
+        data = await UsersSurveys.create({
+            id: uuid(),
+            idUser: idUser,
+            idSurvey: id
+        })
+        if (!data) {
+            await Surveys.destroy({ where: { id: id } })
+            throw new customError('BadRequest', `${label} not created`)
+        }
+
         return res.status(201).json({ message: `${label} created`, content: data })
     } catch (err) {
         next(err)
@@ -122,67 +121,15 @@ exports.update = async (req, res, next) => {
     try {
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'Missing Parameter')
+        if (!req.body.name) throw new customError('MissingData', 'Missing Data')
 
-        let data = await Organizations.findOne({ where: { id: id } })
+        let data = await Surveys.findOne({ where: { id: id } })
         if (!data) throw new customError('NotFound', `${label} not exist`)
 
-        if (req.file) {
-            let data = await data.findOne({ where: { id: id } })
-            if (data.picture) {
-                const filename = data.picture
-                fs.unlink(filename, (err) => {
-                    if (err) throw new customError('BadRequest', err)
-                    console.log(`Picture: ${filename} deleted`)
-                })
-            }
-
-            data = {
-                name: req.body.name,
-                description: req.body.description,
-                picture: req.file.path,
-                phone: req.body.phone,
-                city: req.body.city,
-                neighborhood: body.neighborhood
-            }
-        }
-
-        data = {
-            name: req.body.name,
-            description: req.body.description,
-            phone: req.body.phone,
-            city: req.body.city,
-            neighborhood: req.body.neighborhood
-        }
-
-        data = await Organizations.update(data, { where: { id: id } })
+        data = await Surveys.update({ name: req.body.name }, { where: { id: id } })
         if (!data) throw new customError('BadRequest', `${label} not modified`)
 
-        return res.json({ message: `${label} modified`})
-    } catch (err) {
-        next(err)
-    }
-}
-
-// PATCH IAMGE
-exports.changeProfil = async (req, res, next) => {
-    try {
-        const id = req.params.id
-        if (!id) throw new customError('MissingParams', 'Missing Parameter')
-
-        let data = await Organizations.findOne({ where: { id: id } })
-        if (!data) throw new customError('NotFound', `${label} not exist`)
-
-        if (req.file) {
-            let data = await Organizations.findOne({ where: { id: id } })
-            if (data.picture) {
-                const filename = data.picture
-                fs.unlinkSync(filename)
-            }
-
-            data = await Organizations.update({ picture: req.file.path }, { where: { id: id } })
-            if (!data) throw new customError('BadRequest', `${label} not modified`)
-            return res.json({ message: 'Picture updated' })
-        }
+        return res.json({ message: `${label} Updated` })
     } catch (err) {
         next(err)
     }
@@ -194,14 +141,14 @@ exports.changeStatus = async (req, res, next) => {
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'Missing Parameter')
 
-        let data = await Organizations.findOne({ where: { id: id } })
+        let data = await Surveys.findOne({ where: { id: id } })
         let status = 1
         if (data.idStatus === 1) status = 2
 
-        data = await Organizations.update({ idStatus: status }, { where: { id: id } })
+        data = await Surveys.update({ idStatus: status }, { where: { id: id } })
         if (!data) throw new customError('BadRequest', `${label} not modified`)
 
-        return res.json({ message: `${label} ${status === 1 ? 'active' : 'inactive'}`})
+        return res.json({ message: `${label} ${status === 1 ? 'active' : 'inactive'}` })
     } catch (err) {
         next(err)
     }
@@ -213,10 +160,10 @@ exports.delete = async (req, res, next) => {
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'Missing Parameter')
 
-        let data = await Organizations.findOne({ where: { id: id } })
+        let data = await Surveys.findOne({ where: { id: id } })
         if (!data) throw new customError('NotFound', `${label} not exist`)
 
-        data = await Organizations.destroy({ where: { id: id }, force: true })
+        data = await Surveys.destroy({ where: { id: id }, force: true })
         if (!data) throw new customError('AlreadyExist', `${label} already deleted`)
 
         return res.json({ message: `${label} deleted` })
@@ -231,10 +178,13 @@ exports.deleteTrash = async (req, res, next) => {
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'Missing Parameter')
 
-        let data = await Organizations.findOne({ where: { id: id } })
+        let data = await Surveys.findOne({ where: { id: id } })
         if (!data) throw new customError('NotFound', `${label} not exist`)
 
-        data = await Organizations.destroy({ where: { id: id } })
+        data = await Surveys.destroy({
+            where: { id: id },
+            include: [Questions]
+        })
         if (!data) throw new customError('AlreadyExist', `${label} already deleted`)
 
         return res.json({ message: `${label} deleted` })
@@ -249,7 +199,7 @@ exports.restore = async (req, res, next) => {
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'Missing Parameter')
 
-        let data = await Organizations.restore({ where: { id: id } })
+        let data = await Surveys.restore({ where: { id: id } })
         if (!data) throw new customError('AlreadyExist', `${label} already restored or does not exist`)
 
         return res.json({ message: `${label} restored` })
@@ -257,19 +207,3 @@ exports.restore = async (req, res, next) => {
         next(err)
     }
 }
-
-// IMPORT PICTURE
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        return cb(null, './public/imgs/profile')
-    },
-    filename: (req, file, cb) => {
-        return cb(null, `${Date.now()}_${file.originalname}`)
-    }
-})
-
-exports.upload = multer({
-    storage: storage,
-    limits: { fieldSize: 100000 }
-}).single('picture')
-// upload()

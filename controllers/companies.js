@@ -4,7 +4,6 @@ const fs = require('fs')
 const multer = require('multer')
 const { Companies, Organizations } = require('../models')
 const customError = require('../hooks/customError')
-const { emit } = require('process')
 
 var label = "Companies"
 
@@ -15,7 +14,7 @@ exports.getAll = async (req, res, next) => {
     const limit = parseInt(req.query.limit) || 10
     const status = parseInt(req.query.status)
     const sort = req.query.sort ? req.query.sort.toLowerCase() === 'asc' ? 'asc' : 'desc' : 'desc'
-    const filter = req.query.filter ? req.query.filter === '' ? 'id' : req.query.filter : 'id'
+    const filter = req.query.filter ? req.query.filter : 'createdAt'
     const keyboard = req.query.k
 
     try {
@@ -43,6 +42,7 @@ exports.getAll = async (req, res, next) => {
 
         const data = await Companies.findAndCountAll({
             where: whereClause,
+            include: [Organizations],
             limit: limit,
             offset: page * limit,
             order: [[filter, sort]],
@@ -73,7 +73,10 @@ exports.getOne = async (req, res, next) => {
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'Missing Parameter')
 
-        const data = await Companies.findOne({ where: { id: id } })
+        const data = await Companies.findOne({ 
+            where: { id: id },
+            include: [Organizations],
+        })
         if (!data) throw new customError('NotFound', `${label} does not exist`)
 
         return res.json({ content: data })
@@ -158,9 +161,9 @@ exports.update = async (req, res, next) => {
         }
 
         data = await Companies.update(data, { where: { id: id } })
-        if (!data) throw new customError('BadRequest', `${label} not update`)
+        if (!data) throw new customError('BadRequest', `${label} not modified`)
 
-        return res.json({ message: `${label} Updated`, content: data })
+        return res.json({ message: `${label} modified` })
     } catch (err) {
         next(err)
     }
@@ -183,8 +186,8 @@ exports.changeProfil = async (req, res, next) => {
             }
 
             data = await Companies.update({ picture: req.file.path }, { where: { id: id } })
-            if (!data) throw new customError('BadRequest', `${label} not update`)
-            return res.json({ message: 'Picture updated' })
+            if (!data) throw new customError('BadRequest', `${label} not modied`)
+            return res.json({ message: 'Picture modified' })
         }
     } catch (err) {
         next(err)
