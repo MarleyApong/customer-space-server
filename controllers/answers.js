@@ -1,6 +1,6 @@
 const { Op } = require('sequelize')
 const { v4: uuid } = require('uuid')
-const { Questions, Answers, QuestionsAnswers, Customers } = require('../models')
+const { Questions, Answers, QuestionsAnswers, Customers, AnswersCustomers } = require('../models')
 const customError = require('../hooks/customError')
 
 const label = "Answer"
@@ -107,6 +107,12 @@ exports.add = async (req, res, next) => {
 
         await Customers.create({
             id: idCustomer,
+        })
+
+        await AnswersCustomers.create({
+            id: uuid(),
+            idAnswer: id,
+            idCustomer: idCustomer
         })
 
         return res.status(201).json({ message: `${label} created`, content: data, customer_tmp: idCustomer })

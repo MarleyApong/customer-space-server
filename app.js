@@ -21,6 +21,7 @@ const productsRouter = require('./routes/products')
 const ordersRouter = require('./routes/orders')
 const tablesRouter = require('./routes/tables')
 const notificationsRouter = require('./routes/notifications')
+const answersCustomersRouter = require('./routes/answersCustomers')
 
 const app = express()
 const corsOption = {
@@ -59,6 +60,7 @@ app.use('/products', productsRouter)
 app.use('/orders', ordersRouter)
 app.use('/tables', tablesRouter)
 app.use('/notifications', notificationsRouter)
+app.use('/answers-customers', answersCustomersRouter)
 
 // SYNCHRONIZATION
 const init = async () => {
@@ -73,6 +75,11 @@ const init = async () => {
     }
 }
 init()
+
+// NOT FOUND
+app.use((req, res, next) => {
+    res.status(404).send("Fuck you !")
+})
 
 // MANAGER ERROR
 app.use(errorHandler)

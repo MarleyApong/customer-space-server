@@ -1,4 +1,4 @@
-const { answersCustomers } = require('../models')
+const { AnswersCustomers } = require('../models')
 const customError = require('../hooks/customError')
 
 const label = "Assignment"
@@ -10,10 +10,9 @@ exports.getAll = async (req, res, next) => {
     const limit = parseInt(req.query.limit) || 10
 
     try {
-        const data = await answersCustomers.findAndCountAll({
+        const data = await AnswersCustomers.findAndCountAll({
             limit: limit,
             offset: page * limit,
-            order: [[filter, sort]],
         })
         if (!data) throw new customError('NotFound', `${label} not found`)
 
@@ -23,8 +22,6 @@ exports.getAll = async (req, res, next) => {
                 totalpages: Math.ceil(data.count / limit),
                 currentElements: data.rows.length,
                 totalElements: data.count,
-                filter: filter,
-                sort: sort,
                 limit: limit,
                 page: page,
             }
