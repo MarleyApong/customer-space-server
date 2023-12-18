@@ -17,7 +17,7 @@
   "production": {
     "username": "customer",
     "password": "Wx6a?q044",
-    "database": "database_production",
+    "database": "customer-space",
     "host": "127.0.0.1",
     "dialect": "mysql"
   }
