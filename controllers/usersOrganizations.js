@@ -1,9 +1,8 @@
-const { Op } = require('sequelize')
 const { v4: uuid } = require('uuid')
-const { Surveys, Questions } = require('../models')
+const { UsersOrganizations, Users, Organizations } = require('../models')
 const customError = require('../hooks/customError')
 
-const label = "Question"
+const label = "Assignment"
 
 // ROUTING RESSOURCE
 // GET ALL
@@ -38,9 +37,8 @@ exports.getAll = async (req, res, next) => {
             }
         }
 
-        const data = await Questions.findAndCountAll({
+        const data = await UsersOrganizations.findAndCountAll({
             where: whereClause,
-            include: [Surveys],
             limit: limit,
             offset: page * limit,
             order: [[filter, sort]],
@@ -71,10 +69,7 @@ exports.getOne = async (req, res, next) => {
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'Missing Parameter')
 
-        const data = await Questions.findOne({
-            where: { id: id },
-            include: [Surveys]
-        })
+        const data = await UsersOrganizations.findOne({ where: { id: id } })
         if (!data) throw new customError('NotFound', `${label} not found`)
 
         return res.json({ content: data })
@@ -83,23 +78,29 @@ exports.getOne = async (req, res, next) => {
     }
 }
 
+
 // CREATE
 exports.add = async (req, res, next) => {
     try {
-        const { idSurvey, name } = req.body
-        if (!idSurvey || !name) throw new customError('MissingData', 'Missing Data')
-        const id = uuid()
-        let data = await Questions.findOne({ where: { id: id } })
-        if (data) throw new customError('AlreadtExist', `This ${label} already exists`)
+        const { idUser, idOrganization } = req.body
+        if (!idUser || !idOrganization) throw new customError('MissingData', 'Missing Data')
+        let data = await Users.findOne({ where: { id: idUser } })
+        if (!data) throw new customError('NotFound', `${label} failed because the user with id: ${idUser} does not exist`)
 
-        data = await Surveys.findOne({ where: { id: idSurvey } })
-        if (!data) if (data) throw new customError('NotFound', `${label} not created because the survey with id: ${idSurvey} does not exist`)
-        data = await Questions.create({
+        data = await Organizations.findOne({ where: { id: idOrganization } })
+        if (!data) if (data) throw new customError('NotFound', `${label} failed because the organization with id: ${idUser} does not exist`)
+        data = await UsersOrganizations.create({
             id: uuid(),
-            idSurvey: idSurvey,
-            name: name,
+            idUser: idUser,
+            idOrganization: idOrganization
         })
         if (!data) throw new customError('BadRequest', `${label} not created`)
+
+        await UsersOrganizations.create({
+            id: uuid(),
+            idUser: idUser,
+            idOrganization: idOrganization
+        })
 
         return res.status(201).json({ message: `${label} created`, content: data })
     } catch (err) {
@@ -111,14 +112,20 @@ exports.add = async (req, res, next) => {
 exports.update = async (req, res, next) => {
     try {
         const id = req.params.id
+        const { idUser, idOrganization } = req.body
         if (!id) throw new customError('MissingParams', 'Missing Parameter')
-        if (!req.body.name) throw new customError('MissingData', 'Missing Data')
+        if (!idUser || !idOrganization) throw new customError('MissingData', 'Missing Data')
 
-        let data = await Questions.findOne({ where: { id: id } })
-        if (!data) throw new customError('NotFound', `${label} not exist`)
+        let data = await UsersOrganizations.findOne({ where: { id: id } })
+        if (!data) throw new customError('NotFound', `${label} does not exist`)
 
-        data = await Questions.update({ name: req.body.name }, { where: { id: id } })
-        if (!data) throw new customError('BadRequest', `${label} not modified`)
+        data = await UsersOrganizations.update({
+            idUser: idUser,
+            idOrganization: idOrganization
+        }, {
+            where: { id: id }
+        })
+        if (!data) throw new customError('BadRequest', `${label} does not modified`)
 
         return res.json({ message: `${label} modified` })
     } catch (err) {
@@ -132,11 +139,11 @@ exports.delete = async (req, res, next) => {
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'Missing Parameter')
 
-        let data = await Questions.findOne({ where: { id: id } })
-        if (!data) throw new customError('NotFound', `${label} not exist`)
+        let data = await UsersOrganizations.findOne({ where: { id: id } })
+        if (!data) throw new customError('NotFound', `This ${label} does not exist`)
 
-        data = await Questions.destroy({ where: { id: id }, force: true })
-        if (!data) throw new customError('AlreadyExist', `${label} already deleted`)
+        data = await UsersOrganizations.destroy({ where: { id: id }, force: true })
+        if (!data) throw new customError('AlreadyExist', `This ${label} already deleted`)
 
         return res.json({ message: `${label} deleted` })
     } catch (err) {
@@ -150,10 +157,10 @@ exports.deleteTrash = async (req, res, next) => {
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'Missing Parameter')
 
-        let data = await Questions.findOne({ where: { id: id } })
-        if (!data) throw new customError('NotFound', `${label} not exist`)
+        let data = await UsersOrganizations.findOne({ where: { id: id } })
+        if (!data) throw new customError('NotFound', `${label} does not exist`)
 
-        data = await Questions.destroy({ where: { id: id } })
+        data = await UsersOrganizations.destroy({ where: { id: id } })
         if (!data) throw new customError('AlreadyExist', `${label} already deleted`)
 
         return res.json({ message: `${label} deleted` })
@@ -168,7 +175,7 @@ exports.restore = async (req, res, next) => {
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'Missing Parameter')
 
-        let data = await Questions.restore({ where: { id: id } })
+        let data = await UsersOrganizations.restore({ where: { id: id } })
         if (!data) throw new customError('AlreadyExist', `${label} already restored or does not exist`)
 
         return res.json({ message: `${label} restored` })

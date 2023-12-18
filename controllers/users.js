@@ -77,7 +77,7 @@ exports.getOne = async (req, res, next) => {
       if (!id) throw new customError('MissingParams', 'Missing Parameters')
 
       let data = await Users.findOne({ where: { id: id } })
-      if (!data) throw new customError('NotFound', `${label} does not exist`)
+      if (!data) throw new customError('NotFound', `${label} not found`)
 
       return res.json({ content: data })
    } catch (err) {
@@ -112,7 +112,7 @@ exports.add = async (req, res, next) => {
          email: email,
          password: hash
       })
-      if (!data) throw new customError('BadRequest', `${label} not created`,)
+      if (!data) throw new customError('BadRequest', `${label} does not created`,)
 
       return res.status(201).json({ message: `${label} created`, data: data })
    } catch (err) {
@@ -130,7 +130,7 @@ exports.update = async (req, res, next) => {
       if (!data) throw new customError('NotFound', `This ${label} does not exist`)
 
       data = await Users.update(req.body, { where: { id: id } })
-      if (!data) throw new customError('BadRequest', `${label} not modified`)
+      if (!data) throw new customError('BadRequest', `${label} does  not modified`)
       return res.json({ message: `${label} modified` })
    } catch (err) {
       next(err)
@@ -150,7 +150,7 @@ exports.changeStatus = async (req, res, next) => {
       if (data.idStatus === 1) status = 2
 
       data = await Users.update({ idStatus: status }, { where: { id: id } })
-      if (!data) throw new customError('BadRequest', `Status not modified`)
+      if (!data) throw new customError('BadRequest', `Status  not modified`)
       return res.json({ message: `Status modified` })
    } catch (err) {
       next(err)

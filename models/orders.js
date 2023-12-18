@@ -11,6 +11,10 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING(64),
       allowNull: false
     },
+    idTable: {
+      type: DataTypes.STRING(64),
+      allowNull: false
+    },
     quantity: {
       type: DataTypes.INTEGER(5),
       allowNull: false

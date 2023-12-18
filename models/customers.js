@@ -8,11 +8,9 @@ module.exports = (sequelize) => {
       },
       name: {
          type: DataTypes.STRING(30),
-         allowNull: false,
       },
       phone: {
          type: DataTypes.STRING(30),
-         allowNull: false,
       }
    }, { paranoid: true })
 

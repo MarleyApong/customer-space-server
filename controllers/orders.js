@@ -1,9 +1,9 @@
 const { Op } = require('sequelize')
 const { v4: uuid } = require('uuid')
-const { Surveys, Questions } = require('../models')
+const { Orders, Users, OrdersProducts, Tables } = require('../models')
 const customError = require('../hooks/customError')
 
-const label = "Question"
+const label = "Order"
 
 // ROUTING RESSOURCE
 // GET ALL
@@ -38,9 +38,8 @@ exports.getAll = async (req, res, next) => {
             }
         }
 
-        const data = await Questions.findAndCountAll({
+        const data = await Orders.findAndCountAll({
             where: whereClause,
-            include: [Surveys],
             limit: limit,
             offset: page * limit,
             order: [[filter, sort]],
@@ -71,10 +70,7 @@ exports.getOne = async (req, res, next) => {
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'Missing Parameter')
 
-        const data = await Questions.findOne({
-            where: { id: id },
-            include: [Surveys]
-        })
+        const data = await Orders.findOne({ where: { id: id } })
         if (!data) throw new customError('NotFound', `${label} not found`)
 
         return res.json({ content: data })
@@ -86,20 +82,33 @@ exports.getOne = async (req, res, next) => {
 // CREATE
 exports.add = async (req, res, next) => {
     try {
-        const { idSurvey, name } = req.body
-        if (!idSurvey || !name) throw new customError('MissingData', 'Missing Data')
+        const { idUser, idProduct, quantity } = req.body
+        if (!idQuestion || !note) throw new customError('MissingData', 'Missing Data')
         const id = uuid()
-        let data = await Questions.findOne({ where: { id: id } })
+        let data = await Orders.findOne({ where: { id: id } })
         if (data) throw new customError('AlreadtExist', `This ${label} already exists`)
 
-        data = await Surveys.findOne({ where: { id: idSurvey } })
-        if (!data) if (data) throw new customError('NotFound', `${label} not created because the survey with id: ${idSurvey} does not exist`)
-        data = await Questions.create({
+        data = await Users.findOne({ where: { id: idUser } })
+        if (!data) if (data) throw new customError('NotFound', `${label} not created because the user with id: ${idUser} does not exist`)
+
+        await Tables.crea
+
+        data = await Orders.create({
             id: uuid(),
-            idSurvey: idSurvey,
-            name: name,
+            idUser: idUser,
+            idTable: '',
+            idProduct: idProduct,
+            quantity: quantity
         })
         if (!data) throw new customError('BadRequest', `${label} not created`)
+
+        await OrdersProducts.create({
+            id: uuid(),
+            idOrder: idOrder,
+            idProduct: idProduct
+        })
+
+        await Notification.create({id: uuid(), status: 1})
 
         return res.status(201).json({ message: `${label} created`, content: data })
     } catch (err) {
@@ -112,12 +121,12 @@ exports.update = async (req, res, next) => {
     try {
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'Missing Parameter')
-        if (!req.body.name) throw new customError('MissingData', 'Missing Data')
+        if (!req.body.quantity) throw new customError('MissingData', 'Missing Data')
 
-        let data = await Questions.findOne({ where: { id: id } })
+        let data = await Orders.findOne({ where: { id: id } })
         if (!data) throw new customError('NotFound', `${label} not exist`)
 
-        data = await Questions.update({ name: req.body.name }, { where: { id: id } })
+        data = await Orders.update({ quantity: req.body.quantity }, { where: { id: id } })
         if (!data) throw new customError('BadRequest', `${label} not modified`)
 
         return res.json({ message: `${label} modified` })
@@ -132,10 +141,10 @@ exports.delete = async (req, res, next) => {
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'Missing Parameter')
 
-        let data = await Questions.findOne({ where: { id: id } })
+        let data = await Orders.findOne({ where: { id: id } })
         if (!data) throw new customError('NotFound', `${label} not exist`)
 
-        data = await Questions.destroy({ where: { id: id }, force: true })
+        data = await Orders.destroy({ where: { id: id }, force: true })
         if (!data) throw new customError('AlreadyExist', `${label} already deleted`)
 
         return res.json({ message: `${label} deleted` })
@@ -150,10 +159,10 @@ exports.deleteTrash = async (req, res, next) => {
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'Missing Parameter')
 
-        let data = await Questions.findOne({ where: { id: id } })
+        let data = await Orders.findOne({ where: { id: id } })
         if (!data) throw new customError('NotFound', `${label} not exist`)
 
-        data = await Questions.destroy({ where: { id: id } })
+        data = await Orders.destroy({ where: { id: id } })
         if (!data) throw new customError('AlreadyExist', `${label} already deleted`)
 
         return res.json({ message: `${label} deleted` })
@@ -168,7 +177,7 @@ exports.restore = async (req, res, next) => {
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'Missing Parameter')
 
-        let data = await Questions.restore({ where: { id: id } })
+        let data = await Orders.restore({ where: { id: id } })
         if (!data) throw new customError('AlreadyExist', `${label} already restored or does not exist`)
 
         return res.json({ message: `${label} restored` })

@@ -1,7 +1,7 @@
-const { UsersSurveys } = require('../models')
+const { QuestionsAnswers } = require('../models')
 const customError = require('../hooks/customError')
 
-const label = "User-surveys"
+const label = "Question-answers"
 
 // ROUTING RESSOURCE
 // GET ALL
@@ -36,7 +36,7 @@ exports.getAll = async (req, res, next) => {
             }
         }
 
-        const data = await UsersSurveys.findAndCountAll({
+        const data = await QuestionsAnswers.findAndCountAll({
             where: whereClause,
             limit: limit,
             offset: page * limit,
@@ -68,7 +68,7 @@ exports.getOne = async (req, res, next) => {
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'Missing Parameter')
 
-        const data = await UsersSurveys.findOne({ where: { id: id } })
+        const data = await QuestionsAnswers.findOne({ where: { id: id } })
         if (!data) throw new customError('NotFound', `${label} not found`)
 
         return res.json({ content: data })

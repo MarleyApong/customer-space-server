@@ -1,43 +1,16 @@
-const { UsersSurveys } = require('../models')
+const { answersCustomers } = require('../models')
 const customError = require('../hooks/customError')
 
-const label = "User-surveys"
+const label = "Assignment"
 
 // ROUTING RESSOURCE
 // GET ALL
 exports.getAll = async (req, res, next) => {
     const page = parseInt(req.query.page) || 0
     const limit = parseInt(req.query.limit) || 10
-    const status = parseInt(req.query.status)
-    const sort = req.query.sort ? req.query.sort.toLowerCase() === 'asc' ? 'asc' : 'desc' : 'desc'
-    const filter = req.query.filter ? req.query.filter : 'createdAt'
-    const keyboard = req.query.k
 
     try {
-        let whereClause = {}
-        if (status) whereClause.idStatus = status
-
-        if (keyboard) {
-            if (filter !== 'createdAt' && filter !== 'updateAt' && filter !== 'deletedAt') {
-                whereClause = {
-                    ...whereClause,
-                    [filter]: {
-                        [Op.like]: `%${keyboard}%`,
-                    },
-                }
-            }
-            else {
-                whereClause = {
-                    ...whereClause,
-                    [filter]: {
-                        [Op.between]: [new Date(keyboard), new Date(keyboard + " 23:59:59")]
-                    },
-                }
-            }
-        }
-
-        const data = await UsersSurveys.findAndCountAll({
-            where: whereClause,
+        const data = await answersCustomers.findAndCountAll({
             limit: limit,
             offset: page * limit,
             order: [[filter, sort]],
@@ -68,7 +41,7 @@ exports.getOne = async (req, res, next) => {
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'Missing Parameter')
 
-        const data = await UsersSurveys.findOne({ where: { id: id } })
+        const data = await answersCustomers.findOne({ where: { id: id } })
         if (!data) throw new customError('NotFound', `${label} not found`)
 
         return res.json({ content: data })

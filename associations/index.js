@@ -58,9 +58,9 @@ Notifications.belongsTo(Orders, { foreignKey: 'idOrder' })
 Users.hasMany(Orders, { foreignKey: 'idUser' })
 Orders.belongsTo(Users, { foreignKey: 'idUser' })
 
-// ORDERS -> TABLES
-Orders.hasMany(Tables, { foreignKey: 'idOrder' })
-Tables.belongsTo(Orders, { foreignKey: 'idOrder' })
+// ORDERS <- TABLES
+Tables.hasMany(Orders, { foreignKey: 'idTable' })
+Orders.belongsTo(Tables, { foreignKey: 'idTable' })
 
 // SURVEYS -> QUESTIONS
 Surveys.hasMany(Questions, { foreignKey: 'idSurvey' })
@@ -87,12 +87,6 @@ Orders.hasMany(OrdersProducts, { foreignKey: 'idOrder' })
 Products.hasMany(OrdersProducts, { foreignKey: 'idProduct' })
 OrdersProducts.belongsTo(Orders, { foreignKey: 'idOrder' })
 OrdersProducts.belongsTo(Products, { foreignKey: 'idProduct' })
-
-// ORDERS -> ORDERSTABLES <- TABLES
-Tables.hasMany(OrdersProducts, { foreignKey: 'idTable' })
-Orders.hasMany(OrdersProducts, { foreignKey: 'idOrder' })
-OrdersTables.belongsTo(Orders, { foreignKey: 'idOrder' })
-OrdersTables.belongsTo(Tables, { foreignKey: 'idTable' })
 
 // USERS -> USERSSURVEYS <- SURVEYS
 Surveys.hasMany(UsersSurveys, { foreignKey: 'idSurvey' })

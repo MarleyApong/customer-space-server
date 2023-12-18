@@ -10,7 +10,7 @@ module.exports = (sequelize) => {
          type: DataTypes.STRING(64),
          allowNull: false
       },
-      idOrganizations: {
+      idOrganization: {
          type: DataTypes.STRING(64),
          allowNull: false
       },

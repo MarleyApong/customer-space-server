@@ -5,10 +5,6 @@ module.exports = (sequelize) => {
             type: DataTypes.STRING(64),
             primaryKey: true,
         },
-        idQuestion: {
-            type: DataTypes.STRING(64),
-            allowNull: false
-        },
         note: {
             type: DataTypes.SMALLINT(1),
             defaultValue: 0,

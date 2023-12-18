@@ -7,10 +7,6 @@ module.exports = (sequelize) => {
          primaryKey: true,
          allowNull: false
       },
-      idOrder: {
-         type: DataTypes.STRING(64),
-         allowNull: false
-      },
       tableNumber: {
          type: DataTypes.STRING(10),
       }

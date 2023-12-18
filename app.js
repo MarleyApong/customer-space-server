@@ -15,6 +15,12 @@ const surveysRouter = require('./routes/surveys')
 const usersSurveysRouter = require('./routes/usersSurveys')
 const questionsRouter = require('./routes/questions')
 const anwsersRouter = require('./routes/answers')
+const questionsAnwsersRouter = require('./routes/questionsAnswers')
+const usersOrganizationsRouter = require('./routes/usersOrganizations')
+const productsRouter = require('./routes/products')
+const ordersRouter = require('./routes/orders')
+const tablesRouter = require('./routes/tables')
+const notificationsRouter = require('./routes/notifications')
 
 const app = express()
 const corsOption = {
@@ -47,6 +53,12 @@ app.use('/surveys', surveysRouter)
 app.use('/users-surveys', usersSurveysRouter)
 app.use('/questions', questionsRouter)
 app.use('/answers', anwsersRouter)
+app.use('/questions-answers', questionsAnwsersRouter)
+app.use('/users-organizations', usersOrganizationsRouter)
+app.use('/products', productsRouter)
+app.use('/orders', ordersRouter)
+app.use('/tables', tablesRouter)
+app.use('/notifications', notificationsRouter)
 
 // SYNCHRONIZATION
 const init = async () => {

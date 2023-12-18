@@ -1,7 +1,5 @@
 const { Op } = require('sequelize')
 const { v4: uuid } = require('uuid')
-const fs = require('fs')
-const multer = require('multer')
 const { Surveys, Users, UsersSurveys, Questions } = require('../models')
 const customError = require('../hooks/customError')
 
@@ -73,8 +71,8 @@ exports.getOne = async (req, res, next) => {
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'Missing Parameter')
 
-        const data = await Surveys.findOne({ where: { id: id } })
-        if (!data) throw new customError('NotFound', `${label} does not exist`)
+        const data = await Surveys.findOne({ where: { id: id }, include: [Questions] })
+        if (!data) throw new customError('NotFound', `${label} not found`)
 
         return res.json({ content: data })
     } catch (err) {

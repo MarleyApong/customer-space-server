@@ -77,7 +77,7 @@ exports.getOne = async (req, res, next) => {
             where: { id: id },
             include: [Companies], 
         })
-        if (!data) throw new customError('NotFound', `${label} does not exist`)
+        if (!data) throw new customError('NotFound', `${label} not found`)
 
         return res.json({ content: data })
     } catch (err) {
