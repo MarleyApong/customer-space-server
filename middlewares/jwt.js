@@ -15,7 +15,7 @@ const extractBearer = (authorization) => {
 
 // TOKEN IS PRESENT ?
 const checkTokenMiddleware = (req, res, next) => {
-   const open = 0
+   const open = 1
    if (open === 1) {
       const token = req.headers.authorization && extractBearer(req.headers.authorization)
       const privateKey = fs.readFileSync(path.join(__dirname, "../privateKey.key"))
@@ -24,12 +24,10 @@ const checkTokenMiddleware = (req, res, next) => {
       }
 
       jwt.verify(token, privateKey, (err, decodedToken) => {
+         console.log('token decode: ', decodedToken);
          if (err) {
             return res.status(401).json({ message: 'Bad token' })
          }
-         // console.log('decodedToken', decodedToken)
-
-         next()
       })
    }
    next()

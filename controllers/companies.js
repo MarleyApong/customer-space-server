@@ -40,21 +40,26 @@ exports.getAll = async (req, res, next) => {
             }
         }
 
-        const data = await Companies.findAndCountAll({
+        const data = await Companies.findAll({
             where: whereClause,
-            include: [Organizations],
+            // include: [Organizations],
             limit: limit,
             offset: page * limit,
             order: [[filter, sort]],
         })
+        const inProgress = await Companies.count({where: {idStatus: 1}})
+        const blocked = await Companies.count({where: {idStatus: 2}})
+        const totalElements = await Companies.count()
         if (!data) throw new customError('NotFound', `${label} not found`)
 
         return res.json({
             content: {
-                data: data.rows,
-                totalpages: Math.ceil(data.count / limit),
-                currentElements: data.rows.length,
-                totalElements: data.count,
+                data: data,
+                totalpages: Math.ceil(totalElements / limit),
+                currentElements: data.length,
+                totalElements: totalElements,
+                inProgress: inProgress,
+                blocked: blocked,
                 filter: filter,
                 sort: sort,
                 limit: limit,
@@ -87,6 +92,7 @@ exports.getOne = async (req, res, next) => {
 
 // CREATE
 exports.add = async (req, res, next) => {
+    console.log("body: ", req.body)
     try {
         const { idStatus, idOrganization, name, description, category, phone, email, city, neighborhood } = req.body
         const id = uuid()

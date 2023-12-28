@@ -2,6 +2,7 @@ const express = require('express')
 const cors = require('cors')
 const helmet = require('helmet')
 const morgan = require('morgan')
+const path = require('path')
 
 const sequelize = require('./config/db')
 const seedDB = require('./seeders')
@@ -40,7 +41,8 @@ app.use(express.urlencoded({ extended: false }))
 app.use(morgan('combined'))
 
 // STATIC IMAGES FOLDER
-app.use('/images', express.static('./public/images/profil'))
+const staticFilesPath = path.join(__dirname, 'public');
+app.use(express.static(staticFilesPath));
 
 // ROUTES
 app.get('/', (req, res) => {
@@ -77,9 +79,9 @@ const init = async () => {
 init()
 
 // NOT FOUND
-app.use((req, res, next) => {
-    res.status(404).send("Fuck you !")
-})
+// app.use((req, res, next) => {
+//     res.status(404).send("Fuck you !")
+// })
 
 // MANAGER ERROR
 app.use(errorHandler)

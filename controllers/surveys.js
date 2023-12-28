@@ -38,21 +38,26 @@ exports.getAll = async (req, res, next) => {
             }
         }
 
-        const data = await Surveys.findAndCountAll({
+        const data = await Surveys.findAll({
             where: whereClause,
             include: [Questions],
             limit: limit,
             offset: page * limit,
             order: [[filter, sort]],
         })
+        const inProgress = await Surveys.count({where: {idStatus: 1}})
+        const blocked = await Surveys.count({where: {idStatus: 2}})
+        const totalElements = await Surveys.count()
         if (!data) throw new customError('NotFound', `${label} not found`)
 
         return res.json({
             content: {
-                data: data.rows,
-                totalpages: Math.ceil(data.count / limit),
-                currentElements: data.rows.length,
-                totalElements: data.count,
+                data: data,
+                totalpages: Math.ceil(totalElements / limit),
+                currentElements: data.length,
+                totalElements: totalElements,
+                inProgress: inProgress,
+                blocked: blocked,
                 filter: filter,
                 sort: sort,
                 limit: limit,
