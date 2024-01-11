@@ -1,7 +1,7 @@
 const { AnswersCustomers } = require('../models')
 const customError = require('../hooks/customError')
 
-const label = "Assignment"
+const label = "assignment"
 
 // ROUTING RESSOURCE
 // GET ALL

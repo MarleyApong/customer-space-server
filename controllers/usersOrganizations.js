@@ -2,7 +2,7 @@ const { v4: uuid } = require('uuid')
 const { UsersOrganizations, Users, Organizations } = require('../models')
 const customError = require('../hooks/customError')
 
-const label = "Assignment"
+const label = "assignment"
 
 // ROUTING RESSOURCE
 // GET ALL

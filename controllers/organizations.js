@@ -5,7 +5,7 @@ const multer = require('multer')
 const { Organizations, Companies } = require('../models')
 const customError = require('../hooks/customError')
 
-var label = "Organization"
+var label = "organization"
 
 // ROUTING RESSOURCE
 // GET ALL
@@ -93,18 +93,23 @@ exports.add = async (req, res, next) => {
         if (!idStatus || !name || !description || !phone || !city || !neighborhood)
             throw new customError('MissingData', 'Missing Data')
 
+        let picturePath = ''
+        if (req.file) {
+            picturePath = req.file.path // PATH
+        }
+
+        // HERE, WE DELETE THE WORD PUBLIC IN THE PATH
+        const pathWithoutPublic = picturePath.substring(6)
+
         let data = await Organizations.findOne({ where: { id: id } })
         if (data) throw new customError('AlreadtExist', `This ${label} already exists`)
-
-        let picture
-        if (req.file) picture = req.file.path
 
         data = await Organizations.create({
             id: id,
             idStatus: idStatus,
             name: name,
             description: description,
-            picture: picture,
+            picture: pathWithoutPublic,
             phone: phone,
             city: city,
             neighborhood: neighborhood
@@ -116,7 +121,6 @@ exports.add = async (req, res, next) => {
         next(err)
     }
 }
-
 // PATCH
 exports.update = async (req, res, next) => {
     try {
@@ -126,35 +130,29 @@ exports.update = async (req, res, next) => {
         let data = await Organizations.findOne({ where: { id: id } })
         if (!data) throw new customError('NotFound', `${label} not exist`)
 
-        if (req.file) {
-            let data = await data.findOne({ where: { id: id } })
-            if (data.picture) {
-                const filename = data.picture
-                fs.unlink(filename, (err) => {
-                    if (err) throw new customError('BadRequest', err)
-                    console.log(`Picture: ${filename} deleted`)
-                })
-            }
+        let picturePath = data.picture // PATH IMAGE DEFAULD
 
-            data = {
-                name: req.body.name,
-                description: req.body.description,
-                picture: req.file.path,
-                phone: req.body.phone,
-                city: req.body.city,
-                neighborhood: body.neighborhood
+        if (req.file) {
+            const extension = req.file.originalname.split('.').pop() // GET EXTENSION
+            picturePath = `/imgs/profile/${Date.now()}_${uuid()}.${extension}` // NEW PATH
+            
+            fs.renameSync(req.file.path, `.${picturePath}`)
+       
+            if (data.picture !== picturePath) {
+                fs.unlinkSync(`.${data.picture}`)
             }
         }
 
-        data = {
+        const updatedData = {
             name: req.body.name,
             description: req.body.description,
+            picture: picturePath,
             phone: req.body.phone,
             city: req.body.city,
             neighborhood: req.body.neighborhood
         }
 
-        data = await Organizations.update(data, { where: { id: id } })
+        data = await Organizations.update(updatedData, { where: { id: id } })
         if (!data) throw new customError('BadRequest', `${label} not modified`)
 
         return res.json({ message: `${label} modified`})
@@ -175,11 +173,14 @@ exports.changeProfil = async (req, res, next) => {
         if (req.file) {
             let data = await Organizations.findOne({ where: { id: id } })
             if (data.picture) {
-                const filename = data.picture
+                const filename = `public${data.picture}`
                 fs.unlinkSync(filename)
             }
 
-            data = await Organizations.update({ picture: req.file.path }, { where: { id: id } })
+            // HERE, WE DELETE THE WORD PUBLIC IN THE PATH
+            const pathWithoutPublic = req.file.path.substring(6)
+
+            data = await Organizations.update({ picture: pathWithoutPublic }, { where: { id: id } })
             if (!data) throw new customError('BadRequest', `${label} not modified`)
             return res.json({ message: 'Picture updated' })
         }
@@ -264,12 +265,14 @@ const storage = multer.diskStorage({
         return cb(null, './public/imgs/profile')
     },
     filename: (req, file, cb) => {
-        return cb(null, `${Date.now()}_${file.originalname}`)
+        const extension = file.originalname.split('.').pop() // RETRIEVING THE FILE EXTENSION
+        const uniqueFilename = `${Date.now()}_${uuid()}.${extension}` // UNIQUE NAME
+        return cb(null, uniqueFilename)
     }
 })
 
+
 exports.upload = multer({
     storage: storage,
-    limits: { fieldSize: 100000 }
+    limits: { fileSize: 2 * 1024 * 1024 } // 2Mo
 }).single('picture')
-// upload()

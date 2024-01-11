@@ -20,6 +20,5 @@ db.Surveys = require('./surveys')(sequelize)
 db.Tables = require('./tables')(sequelize)
 db.Users = require('./users')(sequelize)
 db.UsersOrganizations = require('./usersOrganizations')(sequelize)
-db.UsersSurveys = require('./usersSurveys')(sequelize)
 
 module.exports = db

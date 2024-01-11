@@ -18,10 +18,10 @@ module.exports = async () => {
             }
          ])
 
-         if (!status) console.error('Error init status defauld !')
-         console.log('Status defauld created !')
+         if (!status) console.error('===================Error init status defauld !===================')
+         console.log('===================Status defauld created !===================')
       }
-      console.log('Status defauld initialized !')
+      console.log('===================Status defauld initialized !===================')
 
       // SEEDERS ROLES DEFAUT
       let roles = await Roles.findAll()
@@ -42,9 +42,9 @@ module.exports = async () => {
          ])
 
          if (!roles) console.error('Error init roles defauld !')
-         console.log('Roles defauld created !')
+         console.log('===================Roles defauld created !===================')
       }
-      console.log('Roles defauld initialized !')
+      console.log('===================Roles defauld initialized !===================')
 
       // SEEDERS ENVS DEFAUT
       let envs = await Envs.findAll()
@@ -60,17 +60,17 @@ module.exports = async () => {
             }
          ])
 
-         if (!envs) console.error('Error init envs defauld !')
-         console.log('Envs defauld created !')
+         if (!envs) console.error('===================Error init envs defauld !===================')
+         console.log('===================Envs defauld created !===================')
       }
-      console.log('Envs defauld initialized !')
+      console.log('===================Envs defauld initialized !===================')
 
       // SEEDERS USERS DEFAUT
       let user = await Users.findOne({ where: { email: "marlexapong90@gmail.com" } })
 
       if (!user) {
          const hash = await bcrypt.hash("12rt", parseInt(process.env.BCRYPT_SALT_ROUND))
-         if (!hash) console.error("Error hash password user defauld ! !")
+         if (!hash) console.error("===================Error hash password user defauld !===================")
 
          user = await Users.create({
             id: uuid(),
@@ -83,11 +83,11 @@ module.exports = async () => {
             email: "marlexapong90@gmail.com",
             password: hash,
          })
-         if (!user) console.error("Error init user defauld !")
+         if (!user) console.error("===================Error init user defauld !===================")
 
-         console.log("User by defauld created !")
+         console.log("===================User by defauld created !===================")
       }
-      console.log("User already init !")
+      console.log("===================User already init !===================")
    } catch (err) {
 
    }

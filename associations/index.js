@@ -15,7 +15,6 @@ const {
    Companies,
    QuestionsAnswers,
    Surveys,
-   UsersSurveys,
    Envs,
    Roles,
    LogsUsers,
@@ -70,6 +69,10 @@ Questions.belongsTo(Surveys, { foreignKey: 'idSurvey' })
 Status.hasMany(Surveys, { foreignKey: 'idStatus' })
 Surveys.belongsTo(Status, { foreignKey: 'idStatus' })
 
+// SURVEYS <- COMPANIES
+Companies.hasMany(Surveys, { foreignKey: 'idCompany' })
+Surveys.belongsTo(Companies, { foreignKey: 'idCompany' })
+
 // QUESTIONS -> QUESTIONSANSWERS <- ANSWERS
 Answers.hasMany(QuestionsAnswers, { foreignKey: 'idAnswer' })
 Questions.hasMany(QuestionsAnswers, { foreignKey: 'idQuestion' })
@@ -88,14 +91,11 @@ Products.hasMany(OrdersProducts, { foreignKey: 'idProduct' })
 OrdersProducts.belongsTo(Orders, { foreignKey: 'idOrder' })
 OrdersProducts.belongsTo(Products, { foreignKey: 'idProduct' })
 
-// USERS -> USERSSURVEYS <- SURVEYS
-Surveys.hasMany(UsersSurveys, { foreignKey: 'idSurvey' })
-Users.hasMany(UsersSurveys, { foreignKey: 'idUser' })
-UsersSurveys.belongsTo(Users, { foreignKey: 'idUser' })
-UsersSurveys.belongsTo(Surveys, { foreignKey: 'idSurvey' })
-
 // USERS -> USERSORGANIZATIONS <- ORGANIZATIONS
 Users.hasMany(UsersOrganizations, { foreignKey: 'idUser' })
 Organizations.hasMany(UsersOrganizations, { foreignKey: 'idOrganization' })
 UsersOrganizations.belongsTo(Users, { foreignKey: 'idUser' })
 UsersOrganizations.belongsTo(Organizations, { foreignKey: 'idOrganization' })
+
+Organizations.belongsToMany(Users, {through: 'UsersOrganizations'})
+Users.belongsToMany(Organizations, {through: 'UsersOrganizations'})

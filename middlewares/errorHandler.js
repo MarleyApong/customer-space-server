@@ -1,4 +1,10 @@
 module.exports = (err, req, res, next) => {
+
+   /*
+      debugLevel = 0 => JUSTE MESSAGE ON ERROR IS RETURN
+      debugLevel = 1 => ALL INFORMATIONS ON ERROR
+   */
+
    let debugLevel = 1
    let debugMessage = "Limit error return by the supervisor. Contact him for more details on the problem !"
    let status = 500
@@ -32,6 +38,14 @@ module.exports = (err, req, res, next) => {
    else if (err.name === 'BadRequest') {
       message = err.message
       status = 400
+   }
+   else if (err.name === 'AddLimitReached') {
+      message = err.message
+      status = 401
+   }
+   else if (err.name === 'AccessForbidden') {
+      message = err.message
+      status = 403
    }
    else if (err.name === 'NotFound') {
       message = err.message

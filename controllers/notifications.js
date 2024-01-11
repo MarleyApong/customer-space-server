@@ -2,7 +2,7 @@ const { Op } = require('sequelize')
 const { Notifications } = require('../models')
 const customError = require('../hooks/customError')
 
-const label = "Notification"
+const label = "notification"
 
 // ROUTING RESSOURCE
 // GET ALL

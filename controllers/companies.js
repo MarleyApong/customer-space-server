@@ -2,10 +2,10 @@ const { Op } = require('sequelize')
 const { v4: uuid } = require('uuid')
 const fs = require('fs')
 const multer = require('multer')
-const { Companies, Organizations } = require('../models')
+const { Companies, Organizations, Surveys } = require('../models')
 const customError = require('../hooks/customError')
 
-var label = "Companies"
+var label = "company"
 
 // ROUTING RESSOURCE
 // GET ALL
@@ -42,13 +42,16 @@ exports.getAll = async (req, res, next) => {
 
         const data = await Companies.findAll({
             where: whereClause,
-            // include: [Organizations],
+            include: [
+                { model: Organizations },
+                { model: Surveys },
+            ],
             limit: limit,
             offset: page * limit,
             order: [[filter, sort]],
         })
-        const inProgress = await Companies.count({where: {idStatus: 1}})
-        const blocked = await Companies.count({where: {idStatus: 2}})
+        const inProgress = await Companies.count({ where: { idStatus: 1 } })
+        const blocked = await Companies.count({ where: { idStatus: 2 } })
         const totalElements = await Companies.count()
         if (!data) throw new customError('NotFound', `${label} not found`)
 
@@ -69,7 +72,6 @@ exports.getAll = async (req, res, next) => {
     } catch (err) {
         next(err)
     }
-
 }
 
 // GET ONE
@@ -77,10 +79,13 @@ exports.getOne = async (req, res, next) => {
     try {
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'Missing Parameter')
-
-        const data = await Companies.findOne({ 
+        console.log("id:", id)
+        const data = await Companies.findOne({
             where: { id: id },
-            include: [Organizations],
+            include: [
+                { model: Organizations },
+                { model: Surveys },
+            ],
         })
         if (!data) throw new customError('NotFound', `${label} not found`)
 
@@ -92,7 +97,6 @@ exports.getOne = async (req, res, next) => {
 
 // CREATE
 exports.add = async (req, res, next) => {
-    console.log("body: ", req.body)
     try {
         const { idStatus, idOrganization, name, description, category, phone, email, city, neighborhood } = req.body
         const id = uuid()
@@ -103,8 +107,14 @@ exports.add = async (req, res, next) => {
         data = await Organizations.findOne({ where: { id: idOrganization } })
         if (!data) if (data) throw new customError('NotFound', `${label} not created because the organization with id: ${idOrganization} does not exist`)
 
-        let picture
-        if (req.file) picture = req.file.path
+        let picturePath = '' // INITIALIZATION OF IMAGE PATH
+
+        if (req.file) {
+            picturePath = req.file.path // PATH
+        }
+
+        // HERE, WE DELETE THE WORD PUBLIC IN THE PATH
+        const pathWithoutPublic = picturePath.substring(6)
 
         data = await Companies.create({
             id: id,
@@ -112,7 +122,7 @@ exports.add = async (req, res, next) => {
             idOrganization: idOrganization,
             name: name,
             description: description,
-            picture: picture,
+            picture: pathWithoutPublic,
             category: category,
             phone: phone,
             email: email,
@@ -120,7 +130,10 @@ exports.add = async (req, res, next) => {
             neighborhood: neighborhood
         })
 
-        if (!data) throw new customError('BadRequest', `${label} not created`)
+        if (!data) {
+            throw new customError('BadRequest', `${label} not created`)
+        }
+
         return res.status(201).json({ message: `${label} created`, content: data })
     } catch (err) {
         next(err)
@@ -136,28 +149,7 @@ exports.update = async (req, res, next) => {
         let data = await Companies.findOne({ where: { id: id } })
         if (!data) throw new customError('NotFound', `${label} not exist`)
 
-        if (req.file) {
-            let data = await data.findOne({ where: { id: id } })
-            if (data.picture) {
-                const filename = data.picture
-                fs.unlink(filename, (err) => {
-                    if (err) throw new customError('BadRequest', err)
-                    console.log(`Picture: ${filename} deleted`)
-                })
-            }
-
-            data = {
-                name: req.body.name,
-                description: req.body.description,
-                picture: req.file.path,
-                category: req.body.category,
-                phone: req.body.phone,
-                city: req.body.city,
-                neighborhood: body.neighborhood
-            }
-        }
-
-        data = {
+        const updatedFields = {
             name: req.body.name,
             description: req.body.description,
             category: req.body.category,
@@ -166,8 +158,24 @@ exports.update = async (req, res, next) => {
             neighborhood: req.body.neighborhood
         }
 
-        data = await Companies.update(data, { where: { id: id } })
-        if (!data) throw new customError('BadRequest', `${label} not modified`)
+        if (req.file) {
+            if (data.picture) {
+                const filePath = data.picture
+                fs.unlinkSync(filePath) // DELETING LAST IMAGE
+            }
+
+            const extension = req.file.originalname.split('.').pop() // RETRIEVING THE FILE EXTENSION
+            const newPicturePath = `/imgs/profile/${Date.now()}_${uuid()}.${extension}` // NEW PATH
+
+            fs.renameSync(req.file.path, `.${newPicturePath}`)
+            updatedFields.picture = newPicturePath // STORING THEN NEW IMAGE PATH
+        }
+
+        // UPDATE
+        data = await Companies.update(updatedFields, { where: { id: id } })
+        if (!data) {
+            throw new customError('BadRequest', `${label} not modified`)
+        }
 
         return res.json({ message: `${label} modified` })
     } catch (err) {
@@ -187,13 +195,16 @@ exports.changeProfil = async (req, res, next) => {
         if (req.file) {
             let data = await Companies.findOne({ where: { id: id } })
             if (data.picture) {
-                const filename = data.picture
+                const filename = `public${data.picture}`
                 fs.unlinkSync(filename)
             }
 
-            data = await Companies.update({ picture: req.file.path }, { where: { id: id } })
-            if (!data) throw new customError('BadRequest', `${label} not modied`)
-            return res.json({ message: 'Picture modified' })
+            // HERE, WE DELETE THE WORD PUBLIC IN THE PATH
+            const pathWithoutPublic = req.file.path.substring(6)
+
+            data = await Companies.update({ picture: pathWithoutPublic }, { where: { id: id } })
+            if (!data) throw new customError('BadRequest', `${label} not modified`)
+            return res.json({ message: 'Picture updated' })
         }
     } catch (err) {
         next(err)
@@ -276,12 +287,14 @@ const storage = multer.diskStorage({
         return cb(null, './public/imgs/profile')
     },
     filename: (req, file, cb) => {
-        return cb(null, `${Date.now()}_${file.originalname}`)
+        const extension = file.originalname.split('.').pop() // RETRIEVING THE FILE EXTENSION
+        const uniqueFilename = `${Date.now()}_${uuid()}.${extension}` // UNIQUE NAME
+        return cb(null, uniqueFilename)
     }
 })
 
+
 exports.upload = multer({
     storage: storage,
-    limits: { fieldSize: 100000 }
+    limits: { fileSize: 2 * 1024 * 1024 } // 2Mo
 }).single('picture')
-// upload()

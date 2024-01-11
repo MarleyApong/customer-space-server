@@ -1,5 +1,5 @@
 const express = require('express')
-const ctrl = require('../controllers/Tables')
+const ctrl = require('../controllers/tables')
 const checkToken = require('../middlewares/jwt')
 
 // GET EXPRESS ROUTER

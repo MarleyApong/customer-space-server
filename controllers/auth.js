@@ -16,6 +16,8 @@ exports.connect = async (req, res, next) => {
         const user = await Users.findOne({ where: { email: email } })
         if (!user) throw new customError('NotFound', `The user with ${email} does not exit`)
 
+        if (user.idStatus === 2) throw new customError('AccessForbidden', `The user with ${email} have been blocked `)
+
         // FULL PARAMETER
         const hash = await bcrypt.compare(password, user.password)
         if (!hash) throw new customError('ProcessHashFailed', 'Wrong password')

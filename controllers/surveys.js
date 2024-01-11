@@ -1,9 +1,9 @@
 const { Op } = require('sequelize')
 const { v4: uuid } = require('uuid')
-const { Surveys, Users, UsersSurveys, Questions } = require('../models')
+const { Surveys, UsersSurveys, Questions, Companies, Organizations } = require('../models')
 const customError = require('../hooks/customError')
 
-const label = "Survey"
+const label = "survey"
 
 // ROUTING RESSOURCE
 // GET ALL
@@ -40,13 +40,21 @@ exports.getAll = async (req, res, next) => {
 
         const data = await Surveys.findAll({
             where: whereClause,
-            include: [Questions],
+            include: [
+                { model: Questions },
+                { 
+                    model: Companies,
+                    include: [
+                        Organizations
+                    ] 
+                }
+            ],
             limit: limit,
             offset: page * limit,
             order: [[filter, sort]],
         })
-        const inProgress = await Surveys.count({where: {idStatus: 1}})
-        const blocked = await Surveys.count({where: {idStatus: 2}})
+        const inProgress = await Surveys.count({ where: { idStatus: 1 } })
+        const blocked = await Surveys.count({ where: { idStatus: 2 } })
         const totalElements = await Surveys.count()
         if (!data) throw new customError('NotFound', `${label} not found`)
 
@@ -76,7 +84,17 @@ exports.getOne = async (req, res, next) => {
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'Missing Parameter')
 
-        const data = await Surveys.findOne({ where: { id: id }, include: [Questions] })
+        const data = await Surveys.findOne({
+            where: { id: id }, include: [
+                { model: Questions },
+                { 
+                    model: Companies,
+                    include: [
+                        Organizations
+                    ] 
+                }
+            ],
+        })
         if (!data) throw new customError('NotFound', `${label} not found`)
 
         return res.json({ content: data })
@@ -88,30 +106,22 @@ exports.getOne = async (req, res, next) => {
 // CREATE
 exports.add = async (req, res, next) => {
     try {
-        const { idUser, idStatus, name } = req.body
+        const { idCompany, idStatus, name } = req.body
         const id = uuid()
-        if (!idUser || !idStatus || !name) throw new customError('MissingData', 'Missing Data')
+
+        if (!idCompany || !idStatus || !name) throw new customError('MissingData', 'Missing Data')
         let data = await Surveys.findOne({ where: { id: id } })
         if (data) throw new customError('AlreadtExist', `This ${label} already exists`)
 
-        data = await Users.findOne({ where: { id: idUser } })
-        if (!data) if (data) throw new customError('NotFound', `${label} not created because the user with id: ${idUser} does not exist`)
+        data = await Companies.findOne({ where: { id: idCompany } })
+        if (!data) if (data) throw new customError('NotFound', `${label} not created because the company with id: ${idUser} does not exist`)
         data = await Surveys.create({
             id: id,
+            idCompany: idCompany,
             idStatus: idStatus,
             name: name,
         })
         if (!data) throw new customError('BadRequest', `${label} not created`)
-
-        data = await UsersSurveys.create({
-            id: uuid(),
-            idUser: idUser,
-            idSurvey: id
-        })
-        if (!data) {
-            await Surveys.destroy({ where: { id: id } })
-            throw new customError('BadRequest', `${label} not created`)
-        }
 
         return res.status(201).json({ message: `${label} created`, content: data })
     } catch (err) {

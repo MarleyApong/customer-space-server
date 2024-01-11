@@ -6,6 +6,10 @@ module.exports = (sequelize) => {
          type: DataTypes.STRING(64),
          primaryKey: true,
       },
+      idCompany: {
+         type: DataTypes.STRING(64),
+         allowNull: false
+      },
       idStatus: {
          type: DataTypes.SMALLINT(1),
          allowNull: false

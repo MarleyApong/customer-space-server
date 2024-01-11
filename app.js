@@ -2,7 +2,6 @@ const express = require('express')
 const cors = require('cors')
 const helmet = require('helmet')
 const morgan = require('morgan')
-const path = require('path')
 
 const sequelize = require('./config/db')
 const seedDB = require('./seeders')
@@ -13,9 +12,9 @@ const usersRouter = require('./routes/users')
 const organizationsRouter = require('./routes/organizations')
 const companiesRouter = require('./routes/companies')
 const surveysRouter = require('./routes/surveys')
-const usersSurveysRouter = require('./routes/usersSurveys')
 const questionsRouter = require('./routes/questions')
 const anwsersRouter = require('./routes/answers')
+const customersRouter = require('./routes/customers')
 const questionsAnwsersRouter = require('./routes/questionsAnswers')
 const usersOrganizationsRouter = require('./routes/usersOrganizations')
 const productsRouter = require('./routes/products')
@@ -23,16 +22,18 @@ const ordersRouter = require('./routes/orders')
 const tablesRouter = require('./routes/tables')
 const notificationsRouter = require('./routes/notifications')
 const answersCustomersRouter = require('./routes/answersCustomers')
+const rolesRouter = require('./routes/roles')
 
 const app = express()
 const corsOption = {
-    origin: '*'
+    origin: '*',
+    allowedHeaders: ['Content-Type', 'Authorization', 'Access-Control-Allow-Headers'],
 }
 
 // UPGRADE PROTECTION
-app.use(helmet({
-    // contentSecutityPolicy: false
-}))
+// app.use(helmet({
+//     contentSecutityPolicy: false
+// }))
 
 // CONFIGURATION API && AUTHORIZATION
 app.use(cors(corsOption))
@@ -41,8 +42,7 @@ app.use(express.urlencoded({ extended: false }))
 app.use(morgan('combined'))
 
 // STATIC IMAGES FOLDER
-const staticFilesPath = path.join(__dirname, 'public');
-app.use(express.static(staticFilesPath));
+app.use(express.static('public'));
 
 // ROUTES
 app.get('/', (req, res) => {
@@ -53,9 +53,9 @@ app.use('/users', usersRouter)
 app.use('/organizations', organizationsRouter)
 app.use('/companies', companiesRouter)
 app.use('/surveys', surveysRouter)
-app.use('/users-surveys', usersSurveysRouter)
 app.use('/questions', questionsRouter)
 app.use('/answers', anwsersRouter)
+app.use('/customers', customersRouter)
 app.use('/questions-answers', questionsAnwsersRouter)
 app.use('/users-organizations', usersOrganizationsRouter)
 app.use('/products', productsRouter)
@@ -63,6 +63,8 @@ app.use('/orders', ordersRouter)
 app.use('/tables', tablesRouter)
 app.use('/notifications', notificationsRouter)
 app.use('/answers-customers', answersCustomersRouter)
+app.use('/roles', rolesRouter)
+
 
 // SYNCHRONIZATION
 const init = async () => {

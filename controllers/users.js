@@ -1,10 +1,10 @@
 const bcrypt = require('bcrypt')
 const { Op } = require('sequelize')
 const { v4: uuid } = require('uuid')
-const { Users, Status, Roles, Envs } = require('../models')
+const { Users, Organizations, Companies, UsersOrganizations } = require('../models')
 const customError = require('../hooks/customError')
 
-let label = "User"
+let label = "user"
 
 // ROUTING RESSOURCE USER
 // GET ALL USERS
@@ -33,6 +33,7 @@ exports.getAll = async (req, res, next) => {
                   [Op.like]: `%${keyboard}%`,
                },
             }
+
          }
          else {
             whereClause = {
@@ -44,21 +45,34 @@ exports.getAll = async (req, res, next) => {
          }
       }
 
-      const data = await Users.findAndCountAll({
+      const data = await Users.findAll({
+         include: [
+            {
+               model: Organizations,
+               include: [
+                  { model: Companies }
+               ]
+            }
+         ],
          attributes: { exclude: ['password'] },
          where: whereClause,
          limit: limit,
          offset: page * limit,
          order: [[filter, sort]],
       })
+      const inProgress = await Users.count({ where: { idStatus: 1 } })
+      const blocked = await Users.count({ where: { idStatus: 2 } })
+      const totalElements = await Users.count()
       if (!data) throw new customError('NotFound', `${label} not found`)
 
       return res.json({
          content: {
-            data: data.rows,
-            totalpages: Math.ceil(data.count / limit),
-            currentElements: data.rows.length,
-            totalElements: data.count,
+            data: data,
+            totalpages: Math.ceil(totalElements / limit),
+            currentElements: data.length,
+            totalElements: totalElements,
+            inProgress: inProgress,
+            blocked: blocked,
             filter: filter,
             sort: sort,
             limit: limit,
@@ -89,17 +103,28 @@ exports.getOne = async (req, res, next) => {
 exports.add = async (req, res, next) => {
    try {
       const id = uuid()
-      const { idRole, idEnv, idStatus, firstName, lastName, phone, email, password } = req.body
+      const { idOrganization, idRole, idEnv, idStatus, firstName, lastName, phone, email, password } = req.body
+
       if (!idRole || !idEnv || !idStatus || !firstName || !phone || !email || !password) throw new customError('MissingData', 'Missing Data')
       let data = await Users.findOne({ where: { email: email } })
-      if (data) throw new customError('AlreadyExist', `${label} with ${email} already exists`)
 
+      if (data) throw new customError('AlreadyExist', `${label} with ${email} already exists`)
       const regexPassword = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/
       const isValidPassword = regexPassword.test(password)
-      if (!isValidPassword) throw new customError('RegexPasswordValidationError', `The password does not meet security requirements`)
 
+      if (!isValidPassword) throw new customError('RegexPasswordValidationError', `The password does not meet security requirements`)
       let hash = await bcrypt.hash(password, parseInt(process.env.BCRYPT_SALT_ROUND))
-      if (!hash) throw new customError('ProcessHashFailed', `${label} Processing hash failed`)
+      if (!hash) throw new customError('ProcessHashFailed', `${label} processing hash failed`)
+
+      if (idOrganization) {
+         data = await Organizations.findOne({ where: { id: idOrganization } })
+         if (!data) throw new customError('NotFound', `${label} not created because the organization with id: ${idOrganization} does not exist`)
+      }
+
+      if (idRole === '3') {
+         data = await Users.count({ where: { idRole: 3 } })
+         if (data >= 2) throw new customError('AddLimitReached', `unauthorized operation`)
+      }
 
       data = await Users.create({
          id: id,
@@ -113,6 +138,14 @@ exports.add = async (req, res, next) => {
          password: hash
       })
       if (!data) throw new customError('BadRequest', `${label} does not created`,)
+
+      if (idOrganization) {
+         data = await UsersOrganizations.create({
+            id: uuid(),
+            idUser: id,
+            idOrganization: idOrganization
+         })
+      }
 
       return res.status(201).json({ message: `${label} created`, data: data })
    } catch (err) {
@@ -143,15 +176,14 @@ exports.changeStatus = async (req, res, next) => {
       const id = req.params.id
       if (!id) throw new customError('MissingParams', 'Missing Parameter')
 
-
       let data = await Users.findOne({ where: { id: id } })
-      if (!data) throw new customError('NotFound', `This ${label} does not exist`)
+      if (!data) throw new customError('NotFound', `this ${label} does not exist`)
       let status = 1
       if (data.idStatus === 1) status = 2
 
       data = await Users.update({ idStatus: status }, { where: { id: id } })
-      if (!data) throw new customError('BadRequest', `Status  not modified`)
-      return res.json({ message: `Status modified` })
+      if (!data) throw new customError('BadRequest', `status  not modified`)
+      return res.json({ message: `status modified` })
    } catch (err) {
       next(err)
    }
@@ -170,6 +202,36 @@ exports.changeRole = async (req, res, next) => {
       data = await Users.update({ idRole: role }, { where: { id: id } })
       if (!data) throw new customError('BadRequest', `${label} not modified`)
       return res.json({ message: `Role modified` })
+   } catch (err) {
+      next(err)
+   }
+}
+
+exports.changePassword = async (req, res, next) => {
+   try {
+      const id = req.params.id
+      const { lastPassword, newPassword } = req.body
+      console.log("id=====: ", id)
+      if (!id) throw new customError('MissingParams', 'Missing Parameter')
+
+      let data = await Users.findOne({ where: { id: id } })
+      if (!data) throw new customError('NotFound', `This ${label} does not exist`)
+
+      const regexPassword = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/
+      const isValidPassword = regexPassword.test(newPassword)
+
+      if (!isValidPassword) throw new customError('RegexPasswordValidationError', `The password does not meet security requirements`)
+
+      // COMPARE PASSWORD
+      const compare = await bcrypt.compare(lastPassword, data.password)
+      if (!compare) throw new customError('ProcessCompareFailed', 'Wrong password')
+
+      const hash = await bcrypt.hash(newPassword, parseInt(process.env.BCRYPT_SALT_ROUND))
+      if (!hash) throw new customError('ProcessHashFailed', 'Wrong password')
+
+      data = await Users.update({ password: hash }, { where: { id: id } })
+      if (!data) throw new customError('BadRequest', `${label} does  not modified`)
+      return res.json({ message: 'password modified' })
    } catch (err) {
       next(err)
    }
