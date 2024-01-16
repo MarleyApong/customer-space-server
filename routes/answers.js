@@ -8,6 +8,6 @@ const router = express.Router()
 // ROUTING RESSOURCE COMPANIES
 router.get('/', checkToken, ctrl.getAll)
 router.get('/:id', checkToken, ctrl.getOne)
-router.put('/', checkToken, ctrl.add)
+router.put('/', ctrl.add)
 
 module.exports = router

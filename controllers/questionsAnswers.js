@@ -1,4 +1,4 @@
-const { QuestionsAnswers } = require('../models')
+const { QuestionsAnswers, Questions, Surveys, Companies, Answers } = require('../models')
 const customError = require('../hooks/customError')
 
 const label = "question-answers"
@@ -38,6 +38,27 @@ exports.getAll = async (req, res, next) => {
 
         const data = await QuestionsAnswers.findAndCountAll({
             where: whereClause,
+            include: [
+                {
+                    model: Questions,
+                    attributes: {exclude: ['updatedAt', 'deletedAt']},
+                    include: [
+                        {
+                            model: Surveys,
+                            attributes: {exclude: ['createdAt','updatedAt', 'deletedAt']},
+                            include: [
+                                { 
+                                    model: Companies,
+                                    attributes: ['id', 'idOrganization', 'idStatus', 'name'], 
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    model: Answers
+                }
+            ],
             limit: limit,
             offset: page * limit,
             order: [[filter, sort]],

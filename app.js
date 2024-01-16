@@ -23,6 +23,7 @@ const tablesRouter = require('./routes/tables')
 const notificationsRouter = require('./routes/notifications')
 const answersCustomersRouter = require('./routes/answersCustomers')
 const rolesRouter = require('./routes/roles')
+const averagesRouter = require('./routes/averages')
 
 const app = express()
 const corsOption = {
@@ -64,6 +65,7 @@ app.use('/tables', tablesRouter)
 app.use('/notifications', notificationsRouter)
 app.use('/answers-customers', answersCustomersRouter)
 app.use('/roles', rolesRouter)
+app.use('/averages', averagesRouter)
 
 
 // SYNCHRONIZATION

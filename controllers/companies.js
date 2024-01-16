@@ -2,7 +2,7 @@ const { Op } = require('sequelize')
 const { v4: uuid } = require('uuid')
 const fs = require('fs')
 const multer = require('multer')
-const { Companies, Organizations, Surveys } = require('../models')
+const { Companies, Organizations, Surveys, Questions } = require('../models')
 const customError = require('../hooks/customError')
 
 var label = "company"
@@ -95,6 +95,37 @@ exports.getOne = async (req, res, next) => {
     }
 }
 
+exports.getWebpage = async (req, res, next) => {
+    try {
+        const webpage = req.params.id
+        if (!webpage) throw new customError('MissingParams', 'Missing Parameter')
+
+        const data = await Companies.findOne({
+            where: { webpage: webpage },
+            include: [
+                {
+                    model: Surveys,
+                    include: [
+                        { model: Questions }
+                    ]
+                },
+            ],
+        })
+        if (!data) throw new customError('NotFound', `${label} not found`)
+
+        const page = {
+            name: data.name,
+            description: data.description,
+            picture: data.picture,
+            surveys: data.Surveys
+        }
+
+        return res.json({ content: page })
+    } catch (err) {
+        next(err)
+    }
+}
+
 // CREATE
 exports.add = async (req, res, next) => {
     try {
@@ -113,8 +144,15 @@ exports.add = async (req, res, next) => {
             picturePath = req.file.path // PATH
         }
 
-        // HERE, WE DELETE THE WORD PUBLIC IN THE PATH
+        // HERE, WE DELETE THE WORD 'PUBLIC' IN THE PATH
         const pathWithoutPublic = picturePath.substring(6)
+
+
+        // CONVERT THE NAME TO LOWERCASE AND REMOVE SPACES
+        const companyNameInLowerCaseWithoutSpaces = name.toLowerCase().replace(/\s/g, '')
+
+        // CONCATENATE WITH THE LAST 3 CHARACTERS OF THE ID
+        const namePage = companyNameInLowerCaseWithoutSpaces + id.slice(-3)
 
         data = await Companies.create({
             id: id,
@@ -127,7 +165,8 @@ exports.add = async (req, res, next) => {
             phone: phone,
             email: email,
             city: city,
-            neighborhood: neighborhood
+            neighborhood: neighborhood,
+            webpage: namePage
         })
 
         if (!data) {

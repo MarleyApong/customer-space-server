@@ -82,44 +82,56 @@ exports.getOne = async (req, res, next) => {
 // CREATE
 exports.add = async (req, res, next) => {
     try {
-        const { idQuestion, note, suggestion } = req.body
-        if (!idQuestion || !note) throw new customError('MissingData', 'Missing Data')
-        const id = uuid()
-        const idCustomer = uuid()
-        let data = await Answers.findOne({ where: { id: id } })
-        if (data) throw new customError('AlreadtExist', `This ${label} already exists`)
+        const responses = req.body
 
-        data = await Questions.findOne({ where: { id: idQuestion } })
-        if (!data) if (data) throw new customError('NotFound', `${label} not created because the question with id: ${idQuestion} does not exist`)
-        data = await Answers.create({
-            id: id,
-            idQuestion: idQuestion,
-            note: note,
-            suggestion: suggestion
-        })
-        if (!data) throw new customError('BadRequest', `${label} not created`)
+        if (!responses || !Array.isArray(responses) || responses.length === 0) {
+            throw new customError('MissingData', 'missing or invalid data')
+        }
 
-        await QuestionsAnswers.create({
-            id: uuid(),
-            idQuestion: idQuestion,
-            idAnswer: id
-        })
+        const answersData = await Promise.all(responses.map(async (response) => {
+            const { idQuestion, note, suggestion } = response
+            if (!idQuestion || !note) {
+                throw new customError('MissingData', 'missing or invalid data')
+            }
 
-        await Customers.create({
-            id: idCustomer,
-        })
+            const id = uuid()
+            const idCustomer = uuid()
 
-        await AnswersCustomers.create({
-            id: uuid(),
-            idAnswer: id,
-            idCustomer: idCustomer
-        })
+            if (await Answers.findOne({ where: { id: id } })) {
+                throw new customError('AlreadyExist', `this answer already exists`)
+            }
 
-        return res.status(201).json({ message: `${label} created`, content: data, customer_tmp: idCustomer })
+            const questionData = await Questions.findOne({ where: { id: idQuestion } })
+            if (!questionData) {
+                throw new customError('NotFound', `${label} not created because the question with id: ${idQuestion} does not exist`)
+            }
+
+            const createdAnswer = await Answers.create({
+                id: id,
+                idQuestion: idQuestion,
+                note: note,
+                suggestion: suggestion
+            })
+
+            if (!createdAnswer) {
+                throw new customError('BadRequest', `${label} not created`)
+            }
+
+            await Promise.all([
+                QuestionsAnswers.create({ id: uuid(), idQuestion: idQuestion, idAnswer: id }),
+                Customers.create({ id: idCustomer }),
+                AnswersCustomers.create({ id: uuid(), idAnswer: id, idCustomer: idCustomer })
+            ])
+
+            return { answer: createdAnswer, customer_tmp: idCustomer }
+        }))
+
+        return res.status(201).json({ message: `${label}s created`, content: answersData })
     } catch (err) {
         next(err)
     }
 }
+
 
 // PATCH
 exports.update = async (req, res, next) => {

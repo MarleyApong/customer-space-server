@@ -217,14 +217,14 @@ exports.changePassword = async (req, res, next) => {
       let data = await Users.findOne({ where: { id: id } })
       if (!data) throw new customError('NotFound', `This ${label} does not exist`)
 
+      // COMPARE PASSWORD
+      const compare = await bcrypt.compare(lastPassword, data.password)
+      if (!compare) throw new customError('ProcessCompareFailed', 'Wrong password')
+      
       const regexPassword = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/
       const isValidPassword = regexPassword.test(newPassword)
 
       if (!isValidPassword) throw new customError('RegexPasswordValidationError', `The password does not meet security requirements`)
-
-      // COMPARE PASSWORD
-      const compare = await bcrypt.compare(lastPassword, data.password)
-      if (!compare) throw new customError('ProcessCompareFailed', 'Wrong password')
 
       const hash = await bcrypt.hash(newPassword, parseInt(process.env.BCRYPT_SALT_ROUND))
       if (!hash) throw new customError('ProcessHashFailed', 'Wrong password')

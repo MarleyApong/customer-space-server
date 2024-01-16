@@ -46,6 +46,10 @@ module.exports = (sequelize) => {
         neighborhood: {
             type: DataTypes.STRING(100),
             allowNull: false
+        },
+        webpage: {
+            type: DataTypes.STRING,
+            allowNull: false
         }
     }, { paranoid: true })
 

@@ -8,6 +8,7 @@ const router = express.Router()
 // ROUTING RESSOURCE COMPANIES
 router.get('/', checkToken, ctrl.getAll)
 router.get('/:id', checkToken, ctrl.getOne)
+router.get('/page/:id', ctrl.getWebpage)
 router.put('/', checkToken, ctrl.upload, ctrl.add)
 router.patch('/:id', checkToken, ctrl.update)
 router.patch('/:id/profile-image', checkToken, ctrl.upload, ctrl.changeProfil)
