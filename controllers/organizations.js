@@ -10,7 +10,7 @@ var label = "organization"
 // ROUTING RESSOURCE
 // GET ALL
 exports.getAll = async (req, res, next) => {
-    const page = parseInt(req.query.page) || 0
+    const page = parseInt(req.query.page) || 1
     const limit = parseInt(req.query.limit) || 10
     const status = parseInt(req.query.status)
     const sort = req.query.sort ? req.query.sort.toLowerCase() === 'asc' ? 'asc' : 'desc' : 'desc'
@@ -40,21 +40,26 @@ exports.getAll = async (req, res, next) => {
             }
         }
 
-        const data = await Organizations.findAndCountAll({
+        const data = await Organizations.findAll({
             where: whereClause,
             include: [Companies],
             limit: limit,
-            offset: page * limit,
+            offset: (page - 1) * limit,
             order: [[filter, sort]],
         })
+        const inProgress = await Organizations.count({ where: { idStatus: 1 } })
+        const blocked = await Organizations.count({ where: { idStatus: 2 } })
+        const totalElements = await Organizations.count()
         if (!data) throw new customError('NotFound', `${label} not found`)
 
         return res.json({
             content: {
-                data: data.rows,
-                totalpages: Math.ceil(data.count / limit),
-                currentElements: data.rows.length,
-                totalElements: data.count,
+                data: data,
+                totalPages: Math.ceil(totalElements / limit),
+                currentElements: data.length,
+                totalElements: totalElements,
+                inProgress: inProgress,
+                blocked: blocked,
                 filter: filter,
                 sort: sort,
                 limit: limit,
@@ -71,11 +76,11 @@ exports.getAll = async (req, res, next) => {
 exports.getOne = async (req, res, next) => {
     try {
         const id = req.params.id
-        if (!id) throw new customError('MissingParams', 'Missing Parameter')
+        if (!id) throw new customError('MissingParams', 'missing parameter')
 
-        const data = await Organizations.findOne({ 
+        const data = await Organizations.findOne({
             where: { id: id },
-            include: [Companies], 
+            include: [Companies],
         })
         if (!data) throw new customError('NotFound', `${label} not found`)
 
@@ -91,7 +96,7 @@ exports.add = async (req, res, next) => {
         const { idStatus, name, description, phone, city, neighborhood } = req.body
         const id = uuid()
         if (!idStatus || !name || !description || !phone || !city || !neighborhood)
-            throw new customError('MissingData', 'Missing Data')
+            throw new customError('MissingData', 'missing data')
 
         let picturePath = ''
         if (req.file) {
@@ -125,7 +130,7 @@ exports.add = async (req, res, next) => {
 exports.update = async (req, res, next) => {
     try {
         const id = req.params.id
-        if (!id) throw new customError('MissingParams', 'Missing Parameter')
+        if (!id) throw new customError('MissingParams', 'missing parameter')
 
         let data = await Organizations.findOne({ where: { id: id } })
         if (!data) throw new customError('NotFound', `${label} not exist`)
@@ -135,9 +140,9 @@ exports.update = async (req, res, next) => {
         if (req.file) {
             const extension = req.file.originalname.split('.').pop() // GET EXTENSION
             picturePath = `/imgs/profile/${Date.now()}_${uuid()}.${extension}` // NEW PATH
-            
+
             fs.renameSync(req.file.path, `.${picturePath}`)
-       
+
             if (data.picture !== picturePath) {
                 fs.unlinkSync(`.${data.picture}`)
             }
@@ -155,7 +160,7 @@ exports.update = async (req, res, next) => {
         data = await Organizations.update(updatedData, { where: { id: id } })
         if (!data) throw new customError('BadRequest', `${label} not modified`)
 
-        return res.json({ message: `${label} modified`})
+        return res.json({ message: `${label} modified` })
     } catch (err) {
         next(err)
     }
@@ -165,7 +170,7 @@ exports.update = async (req, res, next) => {
 exports.changeProfil = async (req, res, next) => {
     try {
         const id = req.params.id
-        if (!id) throw new customError('MissingParams', 'Missing Parameter')
+        if (!id) throw new customError('MissingParams', 'missing parameter')
 
         let data = await Organizations.findOne({ where: { id: id } })
         if (!data) throw new customError('NotFound', `${label} not exist`)
@@ -193,7 +198,7 @@ exports.changeProfil = async (req, res, next) => {
 exports.changeStatus = async (req, res, next) => {
     try {
         const id = req.params.id
-        if (!id) throw new customError('MissingParams', 'Missing Parameter')
+        if (!id) throw new customError('MissingParams', 'missing parameter')
 
         let data = await Organizations.findOne({ where: { id: id } })
         let status = 1
@@ -202,7 +207,7 @@ exports.changeStatus = async (req, res, next) => {
         data = await Organizations.update({ idStatus: status }, { where: { id: id } })
         if (!data) throw new customError('BadRequest', `${label} not modified`)
 
-        return res.json({ message: `${label} ${status === 1 ? 'active' : 'inactive'}`})
+        return res.json({ message: `${label} ${status === 1 ? 'active' : 'inactive'}` })
     } catch (err) {
         next(err)
     }
@@ -212,7 +217,7 @@ exports.changeStatus = async (req, res, next) => {
 exports.delete = async (req, res, next) => {
     try {
         const id = req.params.id
-        if (!id) throw new customError('MissingParams', 'Missing Parameter')
+        if (!id) throw new customError('MissingParams', 'missing parameter')
 
         let data = await Organizations.findOne({ where: { id: id } })
         if (!data) throw new customError('NotFound', `${label} not exist`)
@@ -230,7 +235,7 @@ exports.delete = async (req, res, next) => {
 exports.deleteTrash = async (req, res, next) => {
     try {
         const id = req.params.id
-        if (!id) throw new customError('MissingParams', 'Missing Parameter')
+        if (!id) throw new customError('MissingParams', 'missing parameter')
 
         let data = await Organizations.findOne({ where: { id: id } })
         if (!data) throw new customError('NotFound', `${label} not exist`)
@@ -248,7 +253,7 @@ exports.deleteTrash = async (req, res, next) => {
 exports.restore = async (req, res, next) => {
     try {
         const id = req.params.id
-        if (!id) throw new customError('MissingParams', 'Missing Parameter')
+        if (!id) throw new customError('MissingParams', 'missing parameter')
 
         let data = await Organizations.restore({ where: { id: id } })
         if (!data) throw new customError('AlreadyExist', `${label} already restored or does not exist`)

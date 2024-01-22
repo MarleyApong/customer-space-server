@@ -9,7 +9,7 @@ let label = "user"
 // ROUTING RESSOURCE USER
 // GET ALL USERS
 exports.getAll = async (req, res, next) => {
-   const page = parseInt(req.query.page) || 0
+   const page = parseInt(req.query.page) || 1
    const limit = parseInt(req.query.limit) || 10
    const status = parseInt(req.query.status)
    const role = parseInt(req.query.role)
@@ -57,7 +57,7 @@ exports.getAll = async (req, res, next) => {
          attributes: { exclude: ['password'] },
          where: whereClause,
          limit: limit,
-         offset: page * limit,
+         offset: (page - 1) * limit,
          order: [[filter, sort]],
       })
       const inProgress = await Users.count({ where: { idStatus: 1 } })
@@ -88,7 +88,7 @@ exports.getAll = async (req, res, next) => {
 exports.getOne = async (req, res, next) => {
    try {
       const id = req.params.id
-      if (!id) throw new customError('MissingParams', 'Missing Parameters')
+      if (!id) throw new customError('MissingParams', 'missing parameters')
 
       let data = await Users.findOne({ where: { id: id } })
       if (!data) throw new customError('NotFound', `${label} not found`)
@@ -157,7 +157,7 @@ exports.add = async (req, res, next) => {
 exports.update = async (req, res, next) => {
    try {
       const id = req.params.id
-      if (!id) throw new customError('MissingParams', 'Missing Parameter')
+      if (!id) throw new customError('MissingParams', 'missing parameter')
 
       let data = await Users.findOne({ where: { id: id } })
       if (!data) throw new customError('NotFound', `This ${label} does not exist`)
@@ -174,7 +174,7 @@ exports.update = async (req, res, next) => {
 exports.changeStatus = async (req, res, next) => {
    try {
       const id = req.params.id
-      if (!id) throw new customError('MissingParams', 'Missing Parameter')
+      if (!id) throw new customError('MissingParams', 'missing parameter')
 
       let data = await Users.findOne({ where: { id: id } })
       if (!data) throw new customError('NotFound', `this ${label} does not exist`)
@@ -194,7 +194,7 @@ exports.changeRole = async (req, res, next) => {
    try {
       const id = req.params.id
       const role = req.params.role
-      if (!id) throw new customError('MissingParams', 'Missing Parameter')
+      if (!id) throw new customError('MissingParams', 'missing parameter')
 
       let data = await Users.findOne({ where: { id: id } })
       if (!data) throw new customError('NotFound', `This ${label} does not exist`)
@@ -211,8 +211,7 @@ exports.changePassword = async (req, res, next) => {
    try {
       const id = req.params.id
       const { lastPassword, newPassword } = req.body
-      console.log("id=====: ", id)
-      if (!id) throw new customError('MissingParams', 'Missing Parameter')
+      if (!id) throw new customError('MissingParams', 'missing parameter')
 
       let data = await Users.findOne({ where: { id: id } })
       if (!data) throw new customError('NotFound', `This ${label} does not exist`)
@@ -241,7 +240,7 @@ exports.changePassword = async (req, res, next) => {
 exports.delete = async (req, res, next) => {
    try {
       const id = req.params.id
-      if (!id) throw new customError('MissingParams', 'Missing Parameter')
+      if (!id) throw new customError('MissingParams', 'missing parameter')
 
       let data = await Users.findOne({ where: { id: id } })
       if (!data) throw new customError('NotFound', `${label} not exist`)
@@ -259,7 +258,7 @@ exports.delete = async (req, res, next) => {
 exports.deleteTrash = async (req, res, next) => {
    try {
       const id = req.params.id
-      if (!id) throw new customError('MissingParams', 'Missing Parameters')
+      if (!id) throw new customError('MissingParams', 'missing parameter')
 
       let data = await Users.findOne({ where: { id: id } })
       if (!data) throw new customError('NotFound', `${label} not exist`)
@@ -277,7 +276,7 @@ exports.deleteTrash = async (req, res, next) => {
 exports.restore = async (req, res, next) => {
    try {
       const id = req.params.id
-      if (!id) throw new customError('MissingParams', 'Missing Parameter')
+      if (!id) throw new customError('MissingParams', 'missing parameter')
 
       let data = await Users.restore({ where: { id: id } })
       if (!data) throw new customError('AlreadyExist', `${label} already restored or does not exist`)

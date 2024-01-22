@@ -10,17 +10,17 @@ exports.connect = async (req, res, next) => {
 
     try {
         const { email, password } = req.body
-        if (!email || !password) throw customError('MissingData', 'Missing data')
+        if (!email || !password) throw customError('MissingData', 'missing data')
 
         const privateKey = fs.readFileSync(path.join(__dirname, "../privateKey.key"))
         const user = await Users.findOne({ where: { email: email } })
         if (!user) throw new customError('NotFound', `The user with ${email} does not exit`)
 
-        if (user.idStatus === 2) throw new customError('AccessForbidden', `The user with ${email} have been blocked `)
+        if (user.idStatus === 2) throw new customError('AccessForbidden', `the user with ${email} have been blocked `)
 
         // FULL PARAMETER
         const hash = await bcrypt.compare(password, user.password)
-        if (!hash) throw new customError('ProcessHashFailed', 'Wrong password')
+        if (!hash) throw new customError('ProcessHashFailed', 'wrong password')
 
         // GENERED TOKEN
         const token = jwt.sign({}, privateKey, { expiresIn: process.env.JWT_DURING, algorithm: process.env.JWT_ALGORITHM })

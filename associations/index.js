@@ -18,6 +18,7 @@ const {
    Envs,
    Roles,
    LogsUsers,
+   UsersCompanies,
    UsersOrganizations
 } = require('../models')
 
@@ -97,5 +98,8 @@ Organizations.hasMany(UsersOrganizations, { foreignKey: 'idOrganization' })
 UsersOrganizations.belongsTo(Users, { foreignKey: 'idUser' })
 UsersOrganizations.belongsTo(Organizations, { foreignKey: 'idOrganization' })
 
-Organizations.belongsToMany(Users, {through: 'UsersOrganizations'})
-Users.belongsToMany(Organizations, {through: 'UsersOrganizations'})
+// USERS -> USERSCOMPANIES <- COMPANIES
+Users.hasMany(UsersCompanies, { foreignKey: 'idUser' })
+Organizations.hasMany(UsersCompanies, { foreignKey: 'idOrganization' })
+UsersCompanies.belongsTo(Users, { foreignKey: 'idUser' })
+UsersCompanies.belongsTo(Organizations, { foreignKey: 'idOrganization' })

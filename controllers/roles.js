@@ -1,7 +1,7 @@
 const { Roles } = require('../models')
 const customError = require('../hooks/customError')
 
-const label = "Rrle"
+const label = "role"
 
 // ROUTING RESSOURCE
 // GET ALL
@@ -20,7 +20,7 @@ exports.getAll = async (req, res, next) => {
 exports.add = async (req, res, next) => {
     try {
         const { name } = req.body
-        if (!name) throw new customError('MissingData', 'Missing Data')
+        if (!name) throw new customError('MissingData', 'missing data')
 
         data = await Roles.create({
             id: id,
@@ -38,8 +38,8 @@ exports.add = async (req, res, next) => {
 exports.update = async (req, res, next) => {
     try {
         const id = req.params.id
-        if (!id) throw new customError('MissingParams', 'Missing Parameter')
-        if (!req.body.name) throw new customError('MissingData', 'Missing Data')
+        if (!id) throw new customError('MissingParams', 'missing parameter')
+        if (!req.body.name) throw new customError('MissingData', 'missing data')
 
         let data = await Roles.findOne({ where: { id: id } })
         if (!data) throw new customError('NotFound', `${label} not exist`)
@@ -57,7 +57,7 @@ exports.update = async (req, res, next) => {
 exports.delete = async (req, res, next) => {
     try {
         const id = req.params.id
-        if (!id) throw new customError('MissingParams', 'Missing Parameter')
+        if (!id) throw new customError('MissingParams', 'missing parameter')
 
         let data = await Roles.findOne({ where: { id: id } })
         if (!data) throw new customError('NotFound', `${label} not exist`)
@@ -72,7 +72,7 @@ exports.delete = async (req, res, next) => {
 exports.deleteTrash = async (req, res, next) => {
     try {
         const id = req.params.id
-        if (!id) throw new customError('MissingParams', 'Missing Parameter')
+        if (!id) throw new customError('MissingParams', 'missing parameter')
 
         let data = await Roles.findOne({ where: { id: id } })
         if (!data) throw new customError('NotFound', `${label} not exist`)
@@ -90,7 +90,7 @@ exports.deleteTrash = async (req, res, next) => {
 exports.restore = async (req, res, next) => {
     try {
         const id = req.params.id
-        if (!id) throw new customError('MissingParams', 'Missing Parameter')
+        if (!id) throw new customError('MissingParams', 'missing parameter')
 
         let data = await Roles.restore({ where: { id: id } })
         if (!data) throw new customError('AlreadyExist', `${label} already restored or does not exist`)

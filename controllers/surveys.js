@@ -1,6 +1,6 @@
 const { Op } = require('sequelize')
 const { v4: uuid } = require('uuid')
-const { Surveys, UsersSurveys, Questions, Companies, Organizations } = require('../models')
+const { Surveys, Questions, Companies, Organizations } = require('../models')
 const customError = require('../hooks/customError')
 
 const label = "survey"
@@ -8,7 +8,7 @@ const label = "survey"
 // ROUTING RESSOURCE
 // GET ALL
 exports.getAll = async (req, res, next) => {
-    const page = parseInt(req.query.page) || 0
+    const page = parseInt(req.query.page) || 1
     const limit = parseInt(req.query.limit) || 10
     const status = parseInt(req.query.status)
     const sort = req.query.sort ? req.query.sort.toLowerCase() === 'asc' ? 'asc' : 'desc' : 'desc'
@@ -50,7 +50,7 @@ exports.getAll = async (req, res, next) => {
                 }
             ],
             limit: limit,
-            offset: page * limit,
+            offset: (page - 1) * limit,
             order: [[filter, sort]],
         })
         const inProgress = await Surveys.count({ where: { idStatus: 1 } })
@@ -82,7 +82,7 @@ exports.getAll = async (req, res, next) => {
 exports.getOne = async (req, res, next) => {
     try {
         const id = req.params.id
-        if (!id) throw new customError('MissingParams', 'Missing Parameter')
+        if (!id) throw new customError('MissingParams', 'missing parameter')
 
         const data = await Surveys.findOne({
             where: { id: id }, include: [
@@ -109,7 +109,7 @@ exports.add = async (req, res, next) => {
         const { idCompany, idStatus, name } = req.body
         const id = uuid()
 
-        if (!idCompany || !idStatus || !name) throw new customError('MissingData', 'Missing Data')
+        if (!idCompany || !idStatus || !name) throw new customError('MissingData', 'missing data')
         let data = await Surveys.findOne({ where: { id: id } })
         if (data) throw new customError('AlreadtExist', `This ${label} already exists`)
 
@@ -133,8 +133,8 @@ exports.add = async (req, res, next) => {
 exports.update = async (req, res, next) => {
     try {
         const id = req.params.id
-        if (!id) throw new customError('MissingParams', 'Missing Parameter')
-        if (!req.body.name) throw new customError('MissingData', 'Missing Data')
+        if (!id) throw new customError('MissingParams', 'missing parameter')
+        if (!req.body.name) throw new customError('MissingData', 'missing data')
 
         let data = await Surveys.findOne({ where: { id: id } })
         if (!data) throw new customError('NotFound', `${label} not exist`)
@@ -152,7 +152,7 @@ exports.update = async (req, res, next) => {
 exports.changeStatus = async (req, res, next) => {
     try {
         const id = req.params.id
-        if (!id) throw new customError('MissingParams', 'Missing Parameter')
+        if (!id) throw new customError('MissingParams', 'missing parameter')
 
         let data = await Surveys.findOne({ where: { id: id } })
         let status = 1
@@ -171,7 +171,7 @@ exports.changeStatus = async (req, res, next) => {
 exports.delete = async (req, res, next) => {
     try {
         const id = req.params.id
-        if (!id) throw new customError('MissingParams', 'Missing Parameter')
+        if (!id) throw new customError('MissingParams', 'missing parameter')
 
         let data = await Surveys.findOne({ where: { id: id } })
         if (!data) throw new customError('NotFound', `${label} not exist`)
@@ -189,7 +189,7 @@ exports.delete = async (req, res, next) => {
 exports.deleteTrash = async (req, res, next) => {
     try {
         const id = req.params.id
-        if (!id) throw new customError('MissingParams', 'Missing Parameter')
+        if (!id) throw new customError('MissingParams', 'missing parameter')
 
         let data = await Surveys.findOne({ where: { id: id } })
         if (!data) throw new customError('NotFound', `${label} not exist`)
@@ -210,7 +210,7 @@ exports.deleteTrash = async (req, res, next) => {
 exports.restore = async (req, res, next) => {
     try {
         const id = req.params.id
-        if (!id) throw new customError('MissingParams', 'Missing Parameter')
+        if (!id) throw new customError('MissingParams', 'missing parameter')
 
         let data = await Surveys.restore({ where: { id: id } })
         if (!data) throw new customError('AlreadyExist', `${label} already restored or does not exist`)

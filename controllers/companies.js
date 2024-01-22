@@ -10,7 +10,7 @@ var label = "company"
 // ROUTING RESSOURCE
 // GET ALL
 exports.getAll = async (req, res, next) => {
-    const page = parseInt(req.query.page) || 0
+    const page = parseInt(req.query.page) || 1
     const limit = parseInt(req.query.limit) || 10
     const status = parseInt(req.query.status)
     const sort = req.query.sort ? req.query.sort.toLowerCase() === 'asc' ? 'asc' : 'desc' : 'desc'
@@ -47,7 +47,7 @@ exports.getAll = async (req, res, next) => {
                 { model: Surveys },
             ],
             limit: limit,
-            offset: page * limit,
+            offset: (page - 1) * limit,
             order: [[filter, sort]],
         })
         const inProgress = await Companies.count({ where: { idStatus: 1 } })
@@ -58,7 +58,7 @@ exports.getAll = async (req, res, next) => {
         return res.json({
             content: {
                 data: data,
-                totalpages: Math.ceil(totalElements / limit),
+                totalPages: Math.ceil(totalElements / limit),
                 currentElements: data.length,
                 totalElements: totalElements,
                 inProgress: inProgress,
@@ -78,7 +78,7 @@ exports.getAll = async (req, res, next) => {
 exports.getOne = async (req, res, next) => {
     try {
         const id = req.params.id
-        if (!id) throw new customError('MissingParams', 'Missing Parameter')
+        if (!id) throw new customError('MissingParams', 'missing parameter')
         console.log("id:", id)
         const data = await Companies.findOne({
             where: { id: id },
@@ -98,7 +98,7 @@ exports.getOne = async (req, res, next) => {
 exports.getWebpage = async (req, res, next) => {
     try {
         const webpage = req.params.id
-        if (!webpage) throw new customError('MissingParams', 'Missing Parameter')
+        if (!webpage) throw new customError('MissingParams', 'missing parameter')
 
         const data = await Companies.findOne({
             where: { webpage: webpage },
@@ -131,7 +131,7 @@ exports.add = async (req, res, next) => {
     try {
         const { idStatus, idOrganization, name, description, category, phone, email, city, neighborhood } = req.body
         const id = uuid()
-        if (!idStatus || !idOrganization || !name || !description || !phone || !city || !neighborhood) throw new customError('MissingData', 'Missing Data')
+        if (!idStatus || !idOrganization || !name || !description || !phone || !city || !neighborhood) throw new customError('MissingData', 'missing data')
         let data = await Companies.findOne({ where: { id: id } })
         if (data) throw new customError('AlreadtExist', `This ${label} already exists`)
 
@@ -183,7 +183,7 @@ exports.add = async (req, res, next) => {
 exports.update = async (req, res, next) => {
     try {
         const id = req.params.id
-        if (!id) throw new customError('MissingParams', 'Missing Parameter')
+        if (!id) throw new customError('MissingParams', 'missing parameter')
 
         let data = await Companies.findOne({ where: { id: id } })
         if (!data) throw new customError('NotFound', `${label} not exist`)
@@ -226,7 +226,7 @@ exports.update = async (req, res, next) => {
 exports.changeProfil = async (req, res, next) => {
     try {
         const id = req.params.id
-        if (!id) throw new customError('MissingParams', 'Missing Parameter')
+        if (!id) throw new customError('MissingParams', 'missing parameter')
 
         let data = await Companies.findOne({ where: { id: id } })
         if (!data) throw new customError('NotFound', `${label} not exist`)
@@ -254,7 +254,7 @@ exports.changeProfil = async (req, res, next) => {
 exports.changeStatus = async (req, res, next) => {
     try {
         const id = req.params.id
-        if (!id) throw new customError('MissingParams', 'Missing Parameter')
+        if (!id) throw new customError('MissingParams', 'missing parameter')
 
         let data = await Companies.findOne({ where: { id: id } })
         let status = 1
@@ -273,7 +273,7 @@ exports.changeStatus = async (req, res, next) => {
 exports.delete = async (req, res, next) => {
     try {
         const id = req.params.id
-        if (!id) throw new customError('MissingParams', 'Missing Parameter')
+        if (!id) throw new customError('MissingParams', 'missing parameter')
 
         let data = await Companies.findOne({ where: { id: id } })
         if (!data) throw new customError('NotFound', `${label} not exist`)
@@ -291,7 +291,7 @@ exports.delete = async (req, res, next) => {
 exports.deleteTrash = async (req, res, next) => {
     try {
         const id = req.params.id
-        if (!id) throw new customError('MissingParams', 'Missing Parameter')
+        if (!id) throw new customError('MissingParams', 'missing parameter')
 
         let data = await Companies.findOne({ where: { id: id } })
         if (!data) throw new customError('NotFound', `${label} not exist`)
@@ -309,7 +309,7 @@ exports.deleteTrash = async (req, res, next) => {
 exports.restore = async (req, res, next) => {
     try {
         const id = req.params.id
-        if (!id) throw new customError('MissingParams', 'Missing Parameter')
+        if (!id) throw new customError('MissingParams', 'missing parameter')
 
         let data = await Companies.restore({ where: { id: id } })
         if (!data) throw new customError('AlreadyExist', `${label} already restored or does not exist`)

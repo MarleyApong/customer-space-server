@@ -6,7 +6,7 @@ const label = "question-answers"
 // ROUTING RESSOURCE
 // GET ALL
 exports.getAll = async (req, res, next) => {
-    const page = parseInt(req.query.page) || 0
+    const page = parseInt(req.query.page) || 1
     const limit = parseInt(req.query.limit) || 10
     const status = parseInt(req.query.status)
     const sort = req.query.sort ? req.query.sort.toLowerCase() === 'asc' ? 'asc' : 'desc' : 'desc'
@@ -36,41 +36,39 @@ exports.getAll = async (req, res, next) => {
             }
         }
 
-        const data = await QuestionsAnswers.findAndCountAll({
+        const data = await QuestionsAnswers.findAll({
             where: whereClause,
             include: [
                 {
                     model: Questions,
-                    attributes: {exclude: ['updatedAt', 'deletedAt']},
+                    attributes: { exclude: ['updatedAt', 'deletedAt'] },
                     include: [
                         {
                             model: Surveys,
-                            attributes: {exclude: ['createdAt','updatedAt', 'deletedAt']},
+                            attributes: { exclude: ['createdAt', 'updatedAt', 'deletedAt'] },
                             include: [
-                                { 
+                                {
                                     model: Companies,
-                                    attributes: ['id', 'idOrganization', 'idStatus', 'name'], 
+                                    attributes: ['id', 'idOrganization', 'idStatus', 'name'],
                                 }
                             ]
                         }
                     ]
-                },
-                {
-                    model: Answers
                 }
             ],
             limit: limit,
-            offset: page * limit,
+            offset: (page - 1) * limit,
             order: [[filter, sort]],
         })
+        const totalElements = await QuestionsAnswers.count()
         if (!data) throw new customError('NotFound', `${label} not found`)
 
         return res.json({
             content: {
-                data: data.rows,
-                totalpages: Math.ceil(data.count / limit),
-                currentElements: data.rows.length,
-                totalElements: data.count,
+                data: data,
+                totalpages: Math.ceil(totalElements / limit),
+                currentElements: data.length,
+                totalElements: totalElements,
                 filter: filter,
                 sort: sort,
                 limit: limit,
@@ -87,12 +85,83 @@ exports.getAll = async (req, res, next) => {
 exports.getOne = async (req, res, next) => {
     try {
         const id = req.params.id
-        if (!id) throw new customError('MissingParams', 'Missing Parameter')
+        if (!id) throw new customError('MissingParams', 'missing parameter')
 
         const data = await QuestionsAnswers.findOne({ where: { id: id } })
         if (!data) throw new customError('NotFound', `${label} not found`)
 
         return res.json({ content: data })
+    } catch (err) {
+        next(err)
+    }
+}
+
+// GET BY QUESTION
+exports.getByQuestion = async (req, res, next) => {
+    const page = parseInt(req.query.page) || 1
+    const limit = parseInt(req.query.limit) || 10
+    const sort = req.query.sort ? (req.query.sort.toLowerCase() === 'asc' ? 'asc' : 'desc') : 'desc'
+    const filter = req.query.filter ? req.query.filter : 'createdAt'
+    const keyboard = req.query.k
+
+    try {
+        const id = req.params.id
+        let whereClause = {}
+
+        if (keyboard) {
+            if (filter !== 'createdAt' && filter !== 'updateAt' && filter !== 'deletedAt') {
+                whereClause = {
+                    ...whereClause,
+                    [filter]: {
+                        [Op.like]: `%${keyboard}%`,
+                    },
+                }
+            }
+            else {
+                whereClause = {
+                    ...whereClause,
+                    [filter]: {
+                        [Op.between]: [new Date(keyboard), new Date(keyboard + " 23:59:59")]
+                    },
+                }
+            }
+        }
+
+        if (!id) {
+            throw new customError('MissingParams', 'missing question ID parameter')
+        }
+
+        const data = await QuestionsAnswers.findAll({
+            where: { idQuestion: id },
+            attributes: { exclude: ['id', 'idAnswer', 'updatedAt', 'deletedAt'] },
+            include: [
+                {
+                    model: Answers,
+                    attributes: { exclude: ['id', 'updatedAt', 'deletedAt'] },
+                }
+            ],
+            where: whereClause,
+            limit: limit,
+            offset: (page - 1) * limit
+        })
+
+        const totalElements = await QuestionsAnswers.count()
+        if (!data) {
+            throw new customError('NotFound', `${label} not found`)
+        }
+
+        return res.json({
+            content: {
+                data: data,
+                totalpages: Math.ceil(totalElements / limit),
+                currentElements: data.length,
+                totalElements: totalElements,
+                filter: filter,
+                sort: sort,
+                limit: limit,
+                page: page
+            }
+        })
     } catch (err) {
         next(err)
     }

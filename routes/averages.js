@@ -8,6 +8,7 @@ const router = express.Router()
 // ROUTING RESSOURCE COMPANIES
 router.get('/questions/:id', checkToken, ctrl.averageQuestion)
 router.get('/surveys/:id', checkToken, ctrl.averageSurvey)
+router.get('/companies/min-max', checkToken, ctrl.minMaxAverage)
 router.get('/companies/:id', checkToken, ctrl.averageCompany)
 
 module.exports = router

@@ -1,5 +1,5 @@
 const { v4: uuid } = require('uuid')
-const { UsersOrganizations, Users, Organizations, Companies } = require('../models')
+const { UsersCompanies, Users, Companies } = require('../models')
 const customError = require('../hooks/customError')
 
 const label = "assignment"
@@ -37,13 +37,13 @@ exports.getAll = async (req, res, next) => {
             }
         }
 
-        const data = await UsersOrganizations.findAll({
+        const data = await UsersCompanies.findAll({
             where: whereClause,
             limit: limit,
             offset: (page - 1) * limit,
             order: [[filter, sort]],
         })
-        const totalElements = await UsersOrganizations.count()
+        const totalElements = await UsersCompanies.count()
         if (!data) throw new customError('NotFound', `${label} not found`)
 
         return res.json({
@@ -70,7 +70,7 @@ exports.getOne = async (req, res, next) => {
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
-        const data = await UsersOrganizations.findOne({ where: { id: id } })
+        const data = await UsersCompanies.findOne({ where: { id: id } })
         if (!data) throw new customError('NotFound', `${label} not found`)
 
         return res.json({ content: data })
@@ -85,21 +85,15 @@ exports.getCompanyByUser = async (req, res, next) => {
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
-        const data = await UsersOrganizations.findOne({
+        const data = await UsersCompanies.findOne({
             include: [
                 {
                     model: Users,
                     where: { id: id }
                 },
                 {
-                    model: Organizations,
+                    model: Companies,
                     attributes: ['id'],
-                    include: [
-                        {
-                            model: Companies,
-                            attributes: ['id']
-                        }
-                    ]
                 }
             ]
         })
@@ -115,24 +109,24 @@ exports.getCompanyByUser = async (req, res, next) => {
 // CREATE
 exports.add = async (req, res, next) => {
     try {
-        const { idUser, idOrganization } = req.body
-        if (!idUser || !idOrganization) throw new customError('MissingData', 'missing data')
+        const { idUser, idCompany } = req.body
+        if (!idUser || !idCompany) throw new customError('MissingData', 'missing data')
         let data = await Users.findOne({ where: { id: idUser } })
         if (!data) throw new customError('NotFound', `${label} failed because the user with id: ${idUser} does not exist`)
 
-        data = await Organizations.findOne({ where: { id: idOrganization } })
+        data = await Companies.findOne({ where: { id: idCompany } })
         if (!data) if (data) throw new customError('NotFound', `${label} failed because the organization with id: ${idUser} does not exist`)
-        data = await UsersOrganizations.create({
+        data = await UsersCompanies.create({
             id: uuid(),
             idUser: idUser,
-            idOrganization: idOrganization
+            idCompany: idCompany
         })
         if (!data) throw new customError('BadRequest', `${label} not created`)
 
-        await UsersOrganizations.create({
+        await UsersCompanies.create({
             id: uuid(),
             idUser: idUser,
-            idOrganization: idOrganization
+            idCompany: idCompany
         })
 
         return res.status(201).json({ message: `${label} created`, content: data })
@@ -145,16 +139,16 @@ exports.add = async (req, res, next) => {
 exports.update = async (req, res, next) => {
     try {
         const id = req.params.id
-        const { idUser, idOrganization } = req.body
+        const { idUser, idCompany } = req.body
         if (!id) throw new customError('MissingParams', 'missing parameter')
-        if (!idUser || !idOrganization) throw new customError('MissingData', 'missing data')
+        if (!idUser || !idCompany) throw new customError('MissingData', 'missing data')
 
-        let data = await UsersOrganizations.findOne({ where: { id: id } })
+        let data = await UsersCompanies.findOne({ where: { id: id } })
         if (!data) throw new customError('NotFound', `${label} does not exist`)
 
-        data = await UsersOrganizations.update({
+        data = await UsersCompanies.update({
             idUser: idUser,
-            idOrganization: idOrganization
+            idCompany: idCompany
         }, {
             where: { id: id }
         })
@@ -172,10 +166,10 @@ exports.delete = async (req, res, next) => {
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
-        let data = await UsersOrganizations.findOne({ where: { id: id } })
+        let data = await UsersCompanies.findOne({ where: { id: id } })
         if (!data) throw new customError('NotFound', `This ${label} does not exist`)
 
-        data = await UsersOrganizations.destroy({ where: { id: id }, force: true })
+        data = await UsersCompanies.destroy({ where: { id: id }, force: true })
         if (!data) throw new customError('AlreadyExist', `This ${label} already deleted`)
 
         return res.json({ message: `${label} deleted` })
@@ -190,10 +184,10 @@ exports.deleteTrash = async (req, res, next) => {
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
-        let data = await UsersOrganizations.findOne({ where: { id: id } })
+        let data = await UsersCompanies.findOne({ where: { id: id } })
         if (!data) throw new customError('NotFound', `${label} does not exist`)
 
-        data = await UsersOrganizations.destroy({ where: { id: id } })
+        data = await UsersCompanies.destroy({ where: { id: id } })
         if (!data) throw new customError('AlreadyExist', `${label} already deleted`)
 
         return res.json({ message: `${label} deleted` })
@@ -208,7 +202,7 @@ exports.restore = async (req, res, next) => {
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
-        let data = await UsersOrganizations.restore({ where: { id: id } })
+        let data = await UsersCompanies.restore({ where: { id: id } })
         if (!data) throw new customError('AlreadyExist', `${label} already restored or does not exist`)
 
         return res.json({ message: `${label} restored` })
