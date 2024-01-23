@@ -8,6 +8,7 @@ const router = express.Router()
 // ROUTING RESSOURCE COMPANIES
 router.get('/', checkToken, ctrl.getAll)
 router.get('/:id', checkToken, ctrl.getOne)
+router.get('/company/:id', checkToken, ctrl.getCompaniesByOrganization)
 router.get('/page/:id', ctrl.getWebpage)
 router.put('/', checkToken, ctrl.upload, ctrl.add)
 router.patch('/:id', checkToken, ctrl.update)

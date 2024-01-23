@@ -39,7 +39,7 @@ exports.getOne = async (req, res, next) => {
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
-        const data = await answersCustomers.findOne({ where: { id: id } })
+        const data = await AnswersCustomers.findOne({ where: { id: id } })
         if (!data) throw new customError('NotFound', `${label} not found`)
 
         return res.json({ content: data })

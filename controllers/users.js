@@ -1,7 +1,7 @@
 const bcrypt = require('bcrypt')
 const { Op } = require('sequelize')
 const { v4: uuid } = require('uuid')
-const { Users, Organizations, Companies, UsersOrganizations } = require('../models')
+const { Users, Organizations, Companies, UsersOrganizations, Status, Roles, Envs } = require('../models')
 const customError = require('../hooks/customError')
 
 let label = "user"
@@ -11,19 +11,22 @@ let label = "user"
 exports.getAll = async (req, res, next) => {
    const page = parseInt(req.query.page) || 1
    const limit = parseInt(req.query.limit) || 10
-   const status = parseInt(req.query.status)
-   const role = parseInt(req.query.role)
-   const env = parseInt(req.query.env)
-   const sort = req.query.sort ? req.query.sort.toLowerCase() === 'asc' ? 'asc' : 'desc' : 'desc'
-   const filter = req.query.filter ? req.query.filter : 'createdAt'
+   const status = req.query.status
+   const role = req.query.role
+   const env = req.query.env
+   const sort = req.query.sort || 'desc'
+   const filter = req.query.filter || 'createdAt'
    const keyboard = req.query.k
 
    try {
       let whereClause = {}
 
-      if (status) whereClause.idStatus = status
-      if (role) whereClause.idRole = role
-      if (env) whereClause.idEnv = env
+      let statusData = await Status.findOne({ where: { name: status } })
+      let roleData = await Roles.findOne({ where: { name: status } })
+      let envData = await Envs.findOne({ where: { name: status } })
+      if (status) whereClause.idStatus = statusData.id
+      if (role) whereClause.idRole = roleData.id
+      if (env) whereClause.idEnv = envData.id
 
       if (keyboard) {
          if (filter !== 'createdAt' && filter !== 'updateAt' && filter !== 'deletedAt') {
@@ -52,7 +55,19 @@ exports.getAll = async (req, res, next) => {
                include: [
                   { model: Companies }
                ]
-            }
+            },
+            {
+               model: Status,
+               attributes: ['id', 'name']
+            },
+            {
+               model: Roles,
+               attributes: ['id', 'name']
+            },
+            {
+               model: Envs,
+               attributes: ['id', 'name']
+            },
          ],
          attributes: { exclude: ['password'] },
          where: whereClause,
@@ -60,8 +75,25 @@ exports.getAll = async (req, res, next) => {
          offset: (page - 1) * limit,
          order: [[filter, sort]],
       })
-      const inProgress = await Users.count({ where: { idStatus: 1 } })
-      const blocked = await Users.count({ where: { idStatus: 2 } })
+
+      const inProgress = await Users.count({
+         include: [
+            {
+               model: Status,
+               where: { name: 'actif' }
+            }
+         ]
+      })
+
+      const blocked = await Users.count({
+         include: [
+            {
+               model: Status,
+               where: { name: 'inactif' }
+            }
+         ]
+      })
+
       const totalElements = await Users.count()
       if (!data) throw new customError('NotFound', `${label} not found`)
 
@@ -90,7 +122,23 @@ exports.getOne = async (req, res, next) => {
       const id = req.params.id
       if (!id) throw new customError('MissingParams', 'missing parameters')
 
-      let data = await Users.findOne({ where: { id: id } })
+      let data = await Users.findOne({
+         where: { id: id },
+         include: [
+            {
+               model: Status,
+               attributes: ['id', 'name']
+            },
+            {
+               model: Roles,
+               attributes: ['id', 'name']
+            },
+            {
+               model: Envs,
+               attributes: ['id', 'name']
+            },
+         ]
+      })
       if (!data) throw new customError('NotFound', `${label} not found`)
 
       return res.json({ content: data })
@@ -121,8 +169,17 @@ exports.add = async (req, res, next) => {
          if (!data) throw new customError('NotFound', `${label} not created because the organization with id: ${idOrganization} does not exist`)
       }
 
-      if (idRole === '3') {
-         data = await Users.count({ where: { idRole: 3 } })
+      const role = await Roles.finOne({ where: { id: idRole } })
+
+      if (role.name === 'super admin') {
+         data = await Users.count({
+            include: [
+               {
+                  model: Roles,
+                  where: { name: 'super admin' }
+               }
+            ]
+         })
          if (data >= 2) throw new customError('AddLimitReached', `unauthorized operation`)
       }
 
@@ -219,7 +276,7 @@ exports.changePassword = async (req, res, next) => {
       // COMPARE PASSWORD
       const compare = await bcrypt.compare(lastPassword, data.password)
       if (!compare) throw new customError('ProcessCompareFailed', 'Wrong password')
-      
+
       const regexPassword = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/
       const isValidPassword = regexPassword.test(newPassword)
 

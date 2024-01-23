@@ -113,7 +113,7 @@ exports.minMaxAverage = async (req, res, next) => {
 
     // Iterate through each company
     for (const company of companies) {
-      const companyId = company.id
+      const id = company.id
 
       // Get data associated with the company
       const data = await QuestionsAnswers.findAll({
@@ -126,7 +126,7 @@ exports.minMaxAverage = async (req, res, next) => {
                 include: [
                   {
                     model: Companies,
-                    where: { id: companyId }
+                    where: { id: id }
                   }
                 ]
               }
@@ -137,7 +137,7 @@ exports.minMaxAverage = async (req, res, next) => {
       })
 
       if (!data || data.length === 0) {
-        throw new customError('NotFound', `No answers found for company ${companyId}`)
+        throw new customError('NotFound', `No answers found for company ${id}`)
       }
 
       // Calculate the average

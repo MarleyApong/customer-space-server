@@ -1,6 +1,6 @@
 const { Op } = require('sequelize')
 const { v4: uuid } = require('uuid')
-const { Surveys, Questions, Companies, Organizations } = require('../models')
+const { Surveys, Questions, Companies, Organizations, Status } = require('../models')
 const customError = require('../hooks/customError')
 
 const label = "survey"
@@ -10,14 +10,15 @@ const label = "survey"
 exports.getAll = async (req, res, next) => {
     const page = parseInt(req.query.page) || 1
     const limit = parseInt(req.query.limit) || 10
-    const status = parseInt(req.query.status)
-    const sort = req.query.sort ? req.query.sort.toLowerCase() === 'asc' ? 'asc' : 'desc' : 'desc'
-    const filter = req.query.filter ? req.query.filter : 'createdAt'
+    const status = req.query.status
+    const sort = req.query.sort || 'desc'
+    const filter = req.query.filter || 'createdAt'
     const keyboard = req.query.k
 
     try {
         let whereClause = {}
-        if (status) whereClause.idStatus = status
+        let statusData = await Status.findOne({ where: { name: status } })
+        if (status) whereClause.idStatus = statusData.id
 
         if (keyboard) {
             if (filter !== 'createdAt' && filter !== 'updateAt' && filter !== 'deletedAt') {
@@ -53,8 +54,25 @@ exports.getAll = async (req, res, next) => {
             offset: (page - 1) * limit,
             order: [[filter, sort]],
         })
-        const inProgress = await Surveys.count({ where: { idStatus: 1 } })
-        const blocked = await Surveys.count({ where: { idStatus: 2 } })
+
+       const inProgress = await Surveys.count({
+            include: [
+                {
+                    model: Status,
+                    where: { name: 'actif' }
+                }
+            ]
+        })
+        
+        const blocked = await Surveys.count({
+            include: [
+                {
+                    model: Status,
+                    where: { name: 'inactif' }
+                }
+            ]
+        })
+
         const totalElements = await Surveys.count()
         if (!data) throw new customError('NotFound', `${label} not found`)
 
@@ -154,11 +172,18 @@ exports.changeStatus = async (req, res, next) => {
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
-        let data = await Surveys.findOne({ where: { id: id } })
-        let status = 1
-        if (data.idStatus === 1) status = 2
+        let data = await Surveys.findOne({
+            where: { id: id },
+            include: [
+                { model: Status }
+            ]
+        })
+        
+        let status = 'actif'
+        if (data.Status.name === 'actif') status = 'inactif'
+        data = await Status.findOne({ where: { name: status } })
 
-        data = await Surveys.update({ idStatus: status }, { where: { id: id } })
+        data = await Surveys.update({ idStatus: data.id }, { where: { id: id } })
         if (!data) throw new customError('BadRequest', `${label} not modified`)
 
         return res.json({ message: `${label} ${status === 1 ? 'active' : 'inactive'}` })

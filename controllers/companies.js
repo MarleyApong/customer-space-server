@@ -2,19 +2,19 @@ const { Op } = require('sequelize')
 const { v4: uuid } = require('uuid')
 const fs = require('fs')
 const multer = require('multer')
-const { Companies, Organizations, Surveys, Questions } = require('../models')
+const { Companies, Organizations, Surveys, Questions, Status } = require('../models')
 const customError = require('../hooks/customError')
 
-var label = "company"
+const label = "company"
 
 // ROUTING RESSOURCE
 // GET ALL
 exports.getAll = async (req, res, next) => {
     const page = parseInt(req.query.page) || 1
     const limit = parseInt(req.query.limit) || 10
-    const status = parseInt(req.query.status)
-    const sort = req.query.sort ? req.query.sort.toLowerCase() === 'asc' ? 'asc' : 'desc' : 'desc'
-    const filter = req.query.filter ? req.query.filter : 'createdAt'
+    const status = req.query.status
+    const sort = req.query.sort || 'desc'
+    const filter = req.query.filter || 'createdAt'
     const keyboard = req.query.k
 
     try {
@@ -45,13 +45,34 @@ exports.getAll = async (req, res, next) => {
             include: [
                 { model: Organizations },
                 { model: Surveys },
+                {
+                    model: Status,
+                    attributes: ['id', 'name']
+                },
             ],
             limit: limit,
             offset: (page - 1) * limit,
             order: [[filter, sort]],
         })
-        const inProgress = await Companies.count({ where: { idStatus: 1 } })
-        const blocked = await Companies.count({ where: { idStatus: 2 } })
+
+        const inProgress = await Companies.count({
+            include: [
+                {
+                    model: Status,
+                    where: { name: 'actif' }
+                }
+            ]
+        })
+
+        const blocked = await Companies.count({
+            include: [
+                {
+                    model: Status,
+                    where: { name: 'inactif' }
+                }
+            ]
+        })
+
         const totalElements = await Companies.count()
         if (!data) throw new customError('NotFound', `${label} not found`)
 
@@ -79,12 +100,43 @@ exports.getOne = async (req, res, next) => {
     try {
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
-        console.log("id:", id)
+
         const data = await Companies.findOne({
             where: { id: id },
             include: [
                 { model: Organizations },
                 { model: Surveys },
+                {
+                    model: Status,
+                    attributes: ['id', 'name']
+                },
+            ],
+        })
+        if (!data) throw new customError('NotFound', `${label} not found`)
+
+        return res.json({ content: data })
+    } catch (err) {
+        next(err)
+    }
+}
+
+// GET COMPANY BY ORGANIZATION
+exports.getCompaniesByOrganization = async (req, res, next) => {
+    try {
+        const id = req.params.id
+        const status = req.query.status
+        if (!id) throw new customError('MissingParams', 'missing parameter')
+        if (!status) new customError('MissingData', 'missing data')
+        console.log("status:",status)
+        const statusData = await Status.findOne({ where: { name: status } })
+
+        const data = await Companies.findAll({
+            where: { idStatus: statusData.id },
+            include: [
+                {
+                    model: Organizations,
+                    where: { id: id }
+                }
             ],
         })
         if (!data) throw new customError('NotFound', `${label} not found`)
@@ -256,14 +308,20 @@ exports.changeStatus = async (req, res, next) => {
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
-        let data = await Companies.findOne({ where: { id: id } })
-        let status = 1
-        if (data.idStatus === 1) status = 2
+        let data = await Companies.findOne({
+            where: { id: id },
+            include: [
+                { model: Status }
+            ]
+        })
+        let status = 'actif'
+        if (data.Status.name === 'actif') status = 'inactif'
+        data = await Status.findOne({ where: { name: status } })
 
-        data = await Companies.update({ idStatus: status }, { where: { id: id } })
+        data = await Companies.update({ idStatus: data.id }, { where: { id: id } })
         if (!data) throw new customError('BadRequest', `${label} not modified`)
 
-        return res.json({ message: `${label} ${status === 1 ? 'active' : 'inactive'}` })
+        return res.json({ message: `${label} ${status === 'actif' ? 'active' : 'inactive'}` })
     } catch (err) {
         next(err)
     }

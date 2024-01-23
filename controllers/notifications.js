@@ -1,5 +1,5 @@
 const { Op } = require('sequelize')
-const { Notifications } = require('../models')
+const { Notifications, Status } = require('../models')
 const customError = require('../hooks/customError')
 
 const label = "notification"
@@ -10,13 +10,14 @@ exports.getAll = async (req, res, next) => {
     const page = parseInt(req.query.page) || 1
     const limit = parseInt(req.query.limit) || 10
     const status = parseInt(req.query.status)
-    const sort = req.query.sort ? req.query.sort.toLowerCase() === 'asc' ? 'asc' : 'desc' : 'desc'
-    const filter = req.query.filter ? req.query.filter : 'createdAt'
+    const sort = req.query.sort || 'desc'
+    const filter = req.query.filter || 'createdAt'
     const keyboard = req.query.k
 
     try {
         let whereClause = {}
-        if (status) whereClause.idStatus = status
+        let statusData = await Status.findOne({ where: { name: status } })
+        if (status) whereClause.idStatus = statusData.id
 
         if (keyboard) {
             if (filter !== 'createdAt' && filter !== 'updateAt' && filter !== 'deletedAt') {

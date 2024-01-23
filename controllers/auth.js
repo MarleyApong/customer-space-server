@@ -3,7 +3,7 @@ const fs = require('fs')
 const path = require('path')
 const jwt = require('jsonwebtoken')
 const { v4: uuid } = require('uuid')
-const { Users, LogsUsers } = require('../models')
+const { Users, LogsUsers, Status, Roles, Envs } = require('../models')
 const customError = require('../hooks/customError')
 
 exports.connect = async (req, res, next) => {
@@ -13,10 +13,26 @@ exports.connect = async (req, res, next) => {
         if (!email || !password) throw customError('MissingData', 'missing data')
 
         const privateKey = fs.readFileSync(path.join(__dirname, "../privateKey.key"))
-        const user = await Users.findOne({ where: { email: email } })
+        const user = await Users.findOne({
+            where: { email: email },
+            include: [
+                {
+                    model: Status,
+                    attributes: ['id', 'name']
+                },
+                {
+                    model: Roles,
+                    attributes: ['id', 'name']
+                },
+                {
+                    model: Envs,
+                    attributes: ['id', 'name']
+                },
+            ]
+        })
         if (!user) throw new customError('NotFound', `The user with ${email} does not exit`)
 
-        if (user.idStatus === 2) throw new customError('AccessForbidden', `the user with ${email} have been blocked `)
+        if (user.Status.name === 'inactif') throw new customError('AccessForbidden', `the user with ${email} have been blocked `)
 
         // FULL PARAMETER
         const hash = await bcrypt.compare(password, user.password)
@@ -27,12 +43,12 @@ exports.connect = async (req, res, next) => {
 
         await LogsUsers.create({ id: uuid(), idUser: user.id, login: new Date().toISOString() })
 
-        return res.json({ 
+        return res.json({
             id: user.id,
-            status: user.idStatus, 
-            role: user.idRole,
-            env: user.idEnv,
-            token: token 
+            status: user.Status,
+            role: user.Role,
+            env: user.Env,
+            token: token
         })
     }
     catch (err) {

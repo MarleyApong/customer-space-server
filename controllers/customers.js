@@ -1,5 +1,5 @@
 const { Op } = require('sequelize')
-const { Customers, Answers } = require('../models')
+const { Customers, Answers, Status } = require('../models')
 const customError = require('../hooks/customError')
 
 var label = "customer"
@@ -9,8 +9,8 @@ var label = "customer"
 exports.getAll = async (req, res, next) => {
     const page = parseInt(req.query.page) || 1
     const limit = parseInt(req.query.limit) || 10
-    const sort = req.query.sort ? req.query.sort.toLowerCase() === 'asc' ? 'asc' : 'desc' : 'desc'
-    const filter = req.query.filter ? req.query.filter : 'createdAt'
+    const sort = req.query.sort || 'desc'
+    const filter = req.query.filter || 'createdAt'
     const keyboard = req.query.k
 
     try {
@@ -43,8 +43,24 @@ exports.getAll = async (req, res, next) => {
             offset: (page - 1) * limit,
             order: [[filter, sort]],
         })
-        const inProgress = await Customers.count({ where: { idStatus: 1 } })
-        const blocked = await Customers.count({ where: { idStatus: 2 } })
+
+        const inProgress = await Customers.count({
+            include: [
+                {
+                    model: Status,
+                    where: { name: 'actif' }
+                }
+            ]
+        })
+
+        const blocked = await Customers.count({
+            include: [
+                {
+                    model: Status,
+                    where: { name: 'inactif' }
+                }
+            ]
+        })
         const totalElements = await Customers.count()
         if (!data) throw new customError('NotFound', `${label} not found`)
 
@@ -72,11 +88,11 @@ exports.getOne = async (req, res, next) => {
     try {
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
-        console.log("id:", id)
+
         const data = await Customers.findOne({
             where: { id: id },
             include: [
-                { model: Answers }            ],
+                { model: Answers }],
         })
         if (!data) throw new customError('NotFound', `${label} not found`)
 

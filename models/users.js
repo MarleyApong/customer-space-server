@@ -7,15 +7,15 @@ module.exports = (sequelize) => {
             primaryKey: true,
         },
         idRole: {
-            type: DataTypes.SMALLINT(1),
+            type: DataTypes.STRING(64),
             allowNull: false
         },
         idEnv: {
-            type: DataTypes.SMALLINT(1),
+            type: DataTypes.STRING(64),
             allowNull: false
         },
         idStatus: {
-            type: DataTypes.SMALLINT(1),
+            type: DataTypes.STRING(64),
             allowNull: false
         },
         firstName: {

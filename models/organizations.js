@@ -8,11 +8,11 @@ module.exports = (sequelize) => {
          allowNull: false
       },
       idStatus: {
-         type: DataTypes.SMALLINT(1),
+         type: DataTypes.STRING(64),
          allowNull: false
       },
       name: {
-         type: DataTypes.STRING(64),
+         type: DataTypes.STRING(100),
          allowNull: false
       },
       description: {

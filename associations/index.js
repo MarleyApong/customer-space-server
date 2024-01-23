@@ -44,6 +44,10 @@ Organizations.hasMany(Companies, { foreignKey: 'idOrganization' })
 
 // ORGANIZATIONS <- STATUS
 Organizations.belongsTo(Status, { foreignKey: 'idStatus' })
+Status.hasMany(Organizations, { foreignKey: 'idStatus' })
+
+// COMPANIES <- STATUS
+Companies.belongsTo(Status, { foreignKey: 'idStatus' })
 Status.hasMany(Companies, { foreignKey: 'idStatus' })
 
 // STATUS -> NOTIFICATIONS

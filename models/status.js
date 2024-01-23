@@ -3,9 +3,9 @@ const { DataTypes } = require("sequelize")
 module.exports = (sequelize) => {
    const Status = sequelize.define("Status", {
       id: {
-         type: DataTypes.SMALLINT(1),
+         type: DataTypes.STRING(64),
          primaryKey: true,
-         autoIncrement: true,
+         allowNull: false
       },
       name: {
          type: DataTypes.STRING(15),

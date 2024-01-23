@@ -9,11 +9,11 @@ module.exports = async () => {
       if (status.length == 0) {
          status = await Status.bulkCreate([
             {
-               id: 1,
+               id: uuid(),
                name: 'actif'
             },
             {
-               id: 2,
+               id: uuid(),
                name: 'inactif'
             }
          ])
@@ -28,17 +28,23 @@ module.exports = async () => {
       if (roles.length == 0) {
          roles = await Roles.bulkCreate([
             {
-               id: 1,
-               name: 'user'
+               id: uuid(),
+               name: 'super admin'
             },
             {
-               id: 2,
+               id: uuid(),
                name: 'admin'
             },
             {
-               id: 3,
-               name: 'super admin'
-            }
+               id: uuid(),
+               name: 'simple user'
+            },
+            {
+               id: uuid(),
+               name: 'server'
+            },
+           
+            
          ])
 
          if (!roles) console.error('Error init roles defauld !')
@@ -51,11 +57,11 @@ module.exports = async () => {
       if (envs.length == 0) {
          envs = await Envs.bulkCreate([
             {
-               id: 1,
+               id: uuid(),
                name: 'internal'
             },
             {
-               id: 2,
+               id: uuid(),
                name: 'external'
             }
          ])
@@ -69,14 +75,17 @@ module.exports = async () => {
       let user = await Users.findOne({ where: { email: "marlexapong90@gmail.com" } })
 
       if (!user) {
-         const hash = await bcrypt.hash("12rt", parseInt(process.env.BCRYPT_SALT_ROUND))
+         const role = await Roles.findOne({where: {name: 'super admin'}})
+         const env = await Envs.findOne({where: {name: 'internal'}})
+         const status = await Status.findOne({where: {name: 'actif'}})
+         const hash = await bcrypt.hash("Marley@123", parseInt(process.env.BCRYPT_SALT_ROUND))
          if (!hash) console.error("===================Error hash password user defauld !===================")
 
          user = await Users.create({
             id: uuid(),
-            idRole: 2,
-            idEnv: 1,
-            idStatus: 1,
+            idRole: role.id,
+            idEnv: env.id,
+            idStatus: status.id,
             firstName: "apong",
             lastName: "marley",
             phone: "655371420",
