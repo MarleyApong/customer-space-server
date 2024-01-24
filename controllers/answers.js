@@ -1,6 +1,6 @@
 const { Op } = require('sequelize')
 const { v4: uuid } = require('uuid')
-const { Questions, Answers, QuestionsAnswers, Customers, AnswersCustomers } = require('../models')
+const { Questions, Answers, QuestionsAnswers, Customers, AnswersCustomers, Status } = require('../models')
 const customError = require('../hooks/customError')
 
 const label = "answer"
@@ -11,14 +11,16 @@ exports.getAll = async (req, res, next) => {
     const page = parseInt(req.query.page) || 1
     const limit = parseInt(req.query.limit) || 10
     const status = req.query.status
-    const sort = req.query.sort ? req.query.sort.toLowerCase() === 'asc' ? 'asc' : 'desc' : 'desc'
-    const filter = req.query.filter ? req.query.filter : 'createdAt'
+    const sort = req.query.sort || 'desc'
+    const filter = req.query.filter || 'createdAt'
     const keyboard = req.query.k
 
     try {
         let whereClause = {}
-        let statusData = await Status.findOne({ where: { name: status } })
-        if (status) whereClause.idStatus = statusData.id
+        if (status) {
+            let statusData = await Status.findOne({ where: { name: status } })
+            whereClause.idStatus = statusData.id
+        }
 
         if (keyboard) {
             if (filter !== 'createdAt' && filter !== 'updateAt' && filter !== 'deletedAt') {

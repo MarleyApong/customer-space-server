@@ -17,8 +17,8 @@ exports.getAll = async (req, res, next) => {
 
     try {
         let whereClause = {}
-        let statusData = await Status.findOne({ where: { name: status } })
-        if (status) whereClause.idStatus = statusData.id
+        console.log("========ERROR=======", status)
+        if (status) whereClause.idStatus = status
 
         if (keyboard) {
             if (filter !== 'createdAt' && filter !== 'updateAt' && filter !== 'deletedAt') {
@@ -48,6 +48,10 @@ exports.getAll = async (req, res, next) => {
                     include: [
                         Organizations
                     ] 
+                },
+                {
+                    model: Status,
+                    attributes: ['id','name']
                 }
             ],
             limit: limit,
@@ -110,6 +114,10 @@ exports.getOne = async (req, res, next) => {
                     include: [
                         Organizations
                     ] 
+                },
+                {
+                    model: Status,
+                    attributes: ['id','name']
                 }
             ],
         })

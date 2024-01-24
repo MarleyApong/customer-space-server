@@ -1,6 +1,6 @@
 const { Op } = require('sequelize')
 const { v4: uuid } = require('uuid')
-const { Products, Users } = require('../models')
+const { Products, Users, Status } = require('../models')
 const customError = require('../hooks/customError')
 
 const label = "product"
@@ -17,7 +17,10 @@ exports.getAll = async (req, res, next) => {
 
     try {
         let whereClause = {}
-        if (status) whereClause.idStatus = status
+        if (status) {
+            let statusData = await Status.findOne({ where: { name: status } })
+            whereClause.idStatus = statusData.id
+        }
 
         if (keyboard) {
             if (filter !== 'createdAt' && filter !== 'updateAt' && filter !== 'deletedAt') {

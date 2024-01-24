@@ -17,8 +17,10 @@ exports.getAll = async (req, res, next) => {
 
     try {
         let whereClause = {}
-        let statusData = await Status.findOne({ where: { name: status } })
-        if (status) whereClause.idStatus = statusData.id
+        if (status) {
+            let statusData = await Status.findOne({ where: { name: status } })
+            whereClause.idStatus = statusData.id
+        }
 
         if (keyboard) {
             if (filter !== 'createdAt' && filter !== 'updateAt' && filter !== 'deletedAt') {

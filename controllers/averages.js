@@ -11,13 +11,12 @@ exports.averageQuestion = async (req, res, next) => {
       include: [{ model: Answers }]
     })
 
-    if (!data || data.length === 0) {
-      throw new customError('NotFound', `no answers found for question ${id}`)
-    }
+    // if (!data || data.length === 0) {
+    //   throw new customError('NotFound', `no answers found for question ${id}`)
+    // }
 
-    const totalNotes = data.reduce((sum, answer) => sum + answer.Answer.note, 0)
-    const average = (totalNotes / data.length).toFixed(3)
-
+    const totalNotes = data.length > 0 ? data.reduce((sum, answer) => sum + answer.Answer.note, 0) : 0
+    const average = data.length > 0 ? (totalNotes / data.length).toFixed(3) : 0
     return res.json({ average })
   } catch (err) {
     next(err)
@@ -44,14 +43,14 @@ exports.averageSurvey = async (req, res, next) => {
       ]
     })
 
-    if (!data || data.length === 0) {
-      throw new customError('NotFound', `no answers found for survey ${id}`)
-    }
+    // if (!data || data.length === 0) {
+    //   throw new customError('NotFound', `no answers found for survey ${id}`)
+    // }
 
-    const totalNotes = data.reduce((sum, answer) => sum + answer.Answer.note, 0)
-    const average = (totalNotes / data.length).toFixed(3)
-    
+    const totalNotes = data.length > 0 ? data.reduce((sum, answer) => sum + answer.Answer.note, 0) : 0
+    const average = data.length > 0 ? (totalNotes / data.length).toFixed(3) : 0
     return res.json({ average })
+
   } catch (err) {
     next(err)
   }
@@ -82,14 +81,15 @@ exports.averageCompany = async (req, res, next) => {
       ]
     })
 
-    if (!data || data.length === 0) {
-      throw new customError('NotFound', `no answers found for company ${id}`)
-    }
+    // if (!data || data.length === 0) {
+    //   throw new customError('NotFound', `no answers found for company ${id}`)
+    // }
 
-    const totalNotes = data.reduce((sum, answer) => sum + answer.Answer.note, 0)
-    const average = (totalNotes / data.length).toFixed(3)
-
+    const totalNotes = data.length > 0 ? data.reduce((sum, answer) => sum + answer.Answer.note, 0) : 0
+    const average = data.length > 0 ? (totalNotes / data.length).toFixed(3) : 0
     return res.json({ average })
+
+
   } catch (err) {
     next(err)
   }
@@ -101,9 +101,9 @@ exports.minMaxAverage = async (req, res, next) => {
     // Get all companies
     const companies = await Companies.findAll()
 
-    if (!companies || companies.length === 0) {
-      throw new customError('NotFound', 'No companies found')
-    }
+    // if (!companies || companies.length === 0) {
+    //   throw new customError('NotFound', 'No companies found')
+    // }
 
     // Initialize variables to store the company with the highest and lowest average
     let maxCompany = null
@@ -136,13 +136,13 @@ exports.minMaxAverage = async (req, res, next) => {
         ]
       })
 
-      if (!data || data.length === 0) {
-        throw new customError('NotFound', `No answers found for company ${id}`)
-      }
+      // if (!data || data.length === 0) {
+      //   throw new customError('NotFound', `No answers found for company ${id}`)
+      // }
 
       // Calculate the average
-      const totalNotes = data.reduce((sum, answer) => sum + answer.Answer.note, 0)
-      const average = totalNotes / data.length
+      const totalNotes = data.length > 0 ? data.reduce((sum, answer) => sum + answer.Answer.note, 0) : 0
+      const average = data.length > 0 ? totalNotes / data.length : 0
 
       // Update the company with the highest average
       if (average > maxAverage) {

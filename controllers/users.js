@@ -21,12 +21,9 @@ exports.getAll = async (req, res, next) => {
    try {
       let whereClause = {}
 
-      let statusData = await Status.findOne({ where: { name: status } })
-      let roleData = await Roles.findOne({ where: { name: status } })
-      let envData = await Envs.findOne({ where: { name: status } })
-      if (status) whereClause.idStatus = statusData.id
-      if (role) whereClause.idRole = roleData.id
-      if (env) whereClause.idEnv = envData.id
+      if (status) whereClause.idStatus = status
+      if (role) whereClause.idRole = role
+      if (env) whereClause.idEnv = env
 
       if (keyboard) {
          if (filter !== 'createdAt' && filter !== 'updateAt' && filter !== 'deletedAt') {
@@ -50,12 +47,12 @@ exports.getAll = async (req, res, next) => {
 
       const data = await Users.findAll({
          include: [
-            {
-               model: Organizations,
-               include: [
-                  { model: Companies }
-               ]
-            },
+            // {
+            //    model: Organizations,
+            //    include: [
+            //       { model: Companies }
+            //    ]
+            // },
             {
                model: Status,
                attributes: ['id', 'name']
