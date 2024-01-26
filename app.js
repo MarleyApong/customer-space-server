@@ -25,6 +25,7 @@ const notificationsRouter = require('./routes/notifications')
 const answersCustomersRouter = require('./routes/answersCustomers')
 const rolesRouter = require('./routes/roles')
 const statusRouter = require('./routes/status')
+const envsRouter = require('./routes/envs')
 const averagesRouter = require('./routes/averages')
 
 const app = express()
@@ -45,7 +46,7 @@ app.use(express.urlencoded({ extended: false }))
 app.use(morgan('combined'))
 
 // STATIC IMAGES FOLDER
-app.use(express.static('public'));
+app.use(express.static('public'))
 
 // ROUTES
 app.get('/', (req, res) => {
@@ -69,6 +70,7 @@ app.use('/notifications', notificationsRouter)
 app.use('/answers-customers', answersCustomersRouter)
 app.use('/roles', rolesRouter)
 app.use('/status', statusRouter)
+app.use('/envs', envsRouter)
 app.use('/averages', averagesRouter)
 
 

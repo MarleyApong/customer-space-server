@@ -1,7 +1,7 @@
 const bcrypt = require('bcrypt')
 const { Op } = require('sequelize')
 const { v4: uuid } = require('uuid')
-const { Users, Organizations, Companies, UsersOrganizations, Status, Roles, Envs } = require('../models')
+const { Users, Organizations, Companies, UsersOrganizations, Status, Roles, Envs, UsersCompanies } = require('../models')
 const customError = require('../hooks/customError')
 
 let label = "user"
@@ -144,13 +144,53 @@ exports.getOne = async (req, res, next) => {
    }
 }
 
+// GET ORGANIZATION AND COMPANY BY USER ID
+exports.getOrganizationCompanyByUser = async (req, res, next) => {
+   const id = req.params.id
+   if (!id) throw new customError('MissingParams', 'missing parameters')
+
+   try {
+      const found = await UsersCompanies.findOne({ where: { idUser: id } })
+
+      if (found) {
+         const data = await UsersCompanies.findOne({
+            include: [
+               {
+                  model: Users,
+                  where: { id: id },
+                  attributes: []
+               },
+               {
+                  model: Companies,
+                  attributes: ['id', 'name'],
+                  include: [
+                     {
+                        model: Organizations,
+                        attributes: ['id', 'name']
+                     }
+                  ]
+               }
+            ]
+         })
+         return res.json({ 
+            organization: data.Company.Organization.name, 
+            company: data.Company.name,
+            content: data 
+         })
+      }
+
+   } catch (err) {
+      next(err)
+   }
+}
+
 // CREATE
 exports.add = async (req, res, next) => {
    try {
       const id = uuid()
-      const { idOrganization, idRole, idEnv, idStatus, firstName, lastName, phone, email, password } = req.body
+      const { idOrganization, idCompany, idRole, env, idStatus, firstName, lastName, phone, email, password } = req.body
 
-      if (!idRole || !idEnv || !idStatus || !firstName || !phone || !email || !password) throw new customError('MissingData', 'Missing Data')
+      if (!idRole || !env || !idStatus || !firstName || !phone || !email || !password) throw new customError('MissingData', 'Missing Data')
       let data = await Users.findOne({ where: { email: email } })
 
       if (data) throw new customError('AlreadyExist', `${label} with ${email} already exists`)
@@ -161,13 +201,15 @@ exports.add = async (req, res, next) => {
       let hash = await bcrypt.hash(password, parseInt(process.env.BCRYPT_SALT_ROUND))
       if (!hash) throw new customError('ProcessHashFailed', `${label} processing hash failed`)
 
-      if (idOrganization) {
+      if (idOrganization && idCompany) {
          data = await Organizations.findOne({ where: { id: idOrganization } })
          if (!data) throw new customError('NotFound', `${label} not created because the organization with id: ${idOrganization} does not exist`)
+
+         data = await Companies.findOne({ where: { id: idCompany } })
+         if (!data) throw new customError('NotFound', `${label} not created because the company with id: ${idCompany} does not exist`)
       }
 
-      const role = await Roles.finOne({ where: { id: idRole } })
-
+      const role = await Roles.findOne({ where: { id: idRole } })
       if (role.name === 'super admin') {
          data = await Users.count({
             include: [
@@ -179,6 +221,9 @@ exports.add = async (req, res, next) => {
          })
          if (data >= 2) throw new customError('AddLimitReached', `unauthorized operation`)
       }
+
+      const EnvData = await Envs.findOne({ where: { name: env } })
+      const idEnv = EnvData.id
 
       data = await Users.create({
          id: id,
@@ -198,6 +243,14 @@ exports.add = async (req, res, next) => {
             id: uuid(),
             idUser: id,
             idOrganization: idOrganization
+         })
+      }
+
+      if (idCompany) {
+         data = await UsersCompanies.create({
+            id: uuid(),
+            idUser: id,
+            idCompany: idCompany
          })
       }
 
@@ -230,14 +283,21 @@ exports.changeStatus = async (req, res, next) => {
       const id = req.params.id
       if (!id) throw new customError('MissingParams', 'missing parameter')
 
-      let data = await Users.findOne({ where: { id: id } })
-      if (!data) throw new customError('NotFound', `this ${label} does not exist`)
-      let status = 1
-      if (data.idStatus === 1) status = 2
+      let data = await Users.findOne({
+         where: { id: id },
+         include: [
+            { model: Status }
+         ]
+      })
 
-      data = await Users.update({ idStatus: status }, { where: { id: id } })
-      if (!data) throw new customError('BadRequest', `status  not modified`)
-      return res.json({ message: `status modified` })
+      let status = 'actif'
+      if (data.Status.name === 'actif') status = 'inactif'
+      data = await Status.findOne({ where: { name: status } })
+
+      data = await Users.update({ idStatus: data.id }, { where: { id: id } })
+      if (!data) throw new customError('BadRequest', `${label} not modified`)
+
+      return res.json({ message: `${label} ${status === 'actif' ? 'active' : 'inactive'}` })
    } catch (err) {
       next(err)
    }

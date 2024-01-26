@@ -8,6 +8,7 @@ const router = express.Router()
 // ROUTING RESSOURCE USER
 router.get('/',checkToken, ctrl.getAll)
 router.get('/:id', ctrl.getOne)
+router.get('/organization-company/:id', ctrl.getOrganizationCompanyByUser)
 router.put('/',checkToken, ctrl.add)
 router.patch('/:id',checkToken, ctrl.update)
 router.patch('/:id/password', checkToken, ctrl.changePassword)

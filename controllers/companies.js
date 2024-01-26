@@ -2,7 +2,7 @@ const { Op } = require('sequelize')
 const { v4: uuid } = require('uuid')
 const fs = require('fs')
 const multer = require('multer')
-const { Companies, Organizations, Surveys, Questions, Status } = require('../models')
+const { Companies, Organizations, Surveys, Questions, Status, UsersCompanies, Users } = require('../models')
 const customError = require('../hooks/customError')
 
 const label = "company"
@@ -19,10 +19,7 @@ exports.getAll = async (req, res, next) => {
 
     try {
         let whereClause = {}
-        if (status) {
-            let statusData = await Status.findOne({ where: { name: status } })
-            whereClause.idStatus = statusData.id
-        }
+        if (status) whereClause.idStatus = status
 
         if (keyboard) {
             if (filter !== 'createdAt' && filter !== 'updateAt' && filter !== 'deletedAt') {
@@ -123,6 +120,84 @@ exports.getOne = async (req, res, next) => {
     }
 }
 
+// GET COMPANIES BY USER
+exports.getCompanyByUser = async (req, res, next) => {
+    const page = parseInt(req.query.page) || 1
+    const limit = parseInt(req.query.limit) || 10
+    const status = req.query.status
+    const sort = req.query.sort || 'desc'
+    const filter = req.query.filter || 'createdAt'
+    const keyboard = req.query.k
+
+    try {
+        let whereClause = {}
+        if (status) whereClause.idStatus = status
+
+        if (keyboard) {
+            if (filter !== 'createdAt' && filter !== 'updateAt' && filter !== 'deletedAt') {
+                whereClause = {
+                    ...whereClause,
+                    [filter]: {
+                        [Op.like]: `%${keyboard}%`
+                    }
+                }
+            } else {
+                whereClause = {
+                    ...whereClause,
+                    [filter]: {
+                        [Op.between]: [new Date(keyboard), new Date(keyboard + " 23:59:59")]
+                    }
+                }
+            }
+        }
+
+        const id = req.params.id
+        if (!id) throw new customError('MissingParams', 'missing parameters')
+
+        const totalCount = await Companies.count({
+            include: [
+                {
+                    model: UsersCompanies,
+                    where: { idUser: id },
+                    attributes: []
+                }
+            ],
+            where: whereClause
+        })
+
+        const userCompanies = await Companies.findAll({
+            include: [
+                {
+                    model: UsersCompanies,
+                    where: { idUser: id },
+                    attributes: []
+                }
+            ],
+            where: whereClause,
+            offset: (page - 1) * limit,
+            limit: limit,
+            order: [[filter, sort]],
+        })
+
+        return res.json({
+            totalCompanies: totalCount,
+            content: {
+                data: userCompanies,
+                totalPages: Math.ceil(totalCount / limit),
+                currentElements: userCompanies.length,
+                totalElements: totalCount,
+                filter: filter,
+                sort: sort,
+                limit: limit,
+                page: page
+            }
+        })
+    } catch (err) {
+        // Gestion des erreurs
+    }
+}
+
+
 // GET COMPANY BY ORGANIZATION
 exports.getCompaniesByOrganization = async (req, res, next) => {
     try {
@@ -130,7 +205,7 @@ exports.getCompaniesByOrganization = async (req, res, next) => {
         const status = req.query.status
         if (!id) throw new customError('MissingParams', 'missing parameter')
         if (!status) new customError('MissingData', 'missing data')
-        console.log("status:",status)
+        console.log("status:", status)
         const statusData = await Status.findOne({ where: { name: status } })
 
         const data = await Companies.findAll({

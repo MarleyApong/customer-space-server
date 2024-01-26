@@ -104,6 +104,6 @@ UsersOrganizations.belongsTo(Organizations, { foreignKey: 'idOrganization' })
 
 // USERS -> USERSCOMPANIES <- COMPANIES
 Users.hasMany(UsersCompanies, { foreignKey: 'idUser' })
-Organizations.hasMany(UsersCompanies, { foreignKey: 'idOrganization' })
+Companies.hasMany(UsersCompanies, { foreignKey: 'idCompany' })
 UsersCompanies.belongsTo(Users, { foreignKey: 'idUser' })
-UsersCompanies.belongsTo(Organizations, { foreignKey: 'idOrganization' })
+UsersCompanies.belongsTo(Companies, { foreignKey: 'idCompany' })
