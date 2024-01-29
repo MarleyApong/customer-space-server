@@ -87,20 +87,19 @@ exports.getOne = async (req, res, next) => {
 exports.add = async (req, res, next) => {
     try {
         const responses = req.body
+        const idCustomer = responses.length > 0 ? responses[0].idCustomer : null
 
-        if (!responses || !Array.isArray(responses) || responses.length === 0) {
+        if (!responses || !Array.isArray(responses.data) || responses.length === 0) {
             throw new customError('MissingData', 'missing or invalid data')
         }
 
-        const answersData = await Promise.all(responses.map(async (response) => {
-            const { idQuestion, note, suggestion } = response
+        const answersData = await Promise.all(responses.data.map(async (response) => {
+            const { idQuestion, note, suggestion, idCustomer } = response
             if (!idQuestion || !note) {
                 throw new customError('MissingData', 'missing or invalid data')
             }
 
             const id = uuid()
-            const idCustomer = uuid()
-
             if (await Answers.findOne({ where: { id: id } })) {
                 throw new customError('AlreadyExist', `this answer already exists`)
             }
@@ -121,14 +120,12 @@ exports.add = async (req, res, next) => {
                 throw new customError('BadRequest', `${label} not created`)
             }
 
-            await Promise.all([
-                QuestionsAnswers.create({ id: uuid(), idQuestion: idQuestion, idAnswer: id }),
-                Customers.create({ id: idCustomer }),
-                AnswersCustomers.create({ id: uuid(), idAnswer: id, idCustomer: idCustomer })
-            ])
-
-            return { answer: createdAnswer, customer_tmp: idCustomer }
+            await QuestionsAnswers.create({ id: uuid(), idQuestion: idQuestion, idAnswer: id })
+            await AnswersCustomers.create({ id: uuid(), idAnswer: id, idCustomer: idCustomer })
+            
+            return { answer: createdAnswer }
         }))
+        await Customers.create({ id: idCustomer })
 
         return res.status(201).json({ message: `${label}s created`, content: answersData })
     } catch (err) {

@@ -73,6 +73,7 @@ exports.getAll = async (req, res, next) => {
          order: [[filter, sort]],
       })
 
+      const totalElements = await data.length
       const inProgress = await Users.count({
          include: [
             {
@@ -91,7 +92,15 @@ exports.getAll = async (req, res, next) => {
          ]
       })
 
-      const totalElements = await Users.count()
+      const totalElementsExternal = await Users.count({
+         include: [
+            {
+               model: Envs,
+               attributes: [],
+               where: {name: 'external'}
+            }
+         ]
+      })
       if (!data) throw new customError('NotFound', `${label} not found`)
 
       return res.json({
@@ -100,6 +109,7 @@ exports.getAll = async (req, res, next) => {
             totalpages: Math.ceil(totalElements / limit),
             currentElements: data.length,
             totalElements: totalElements,
+            totalElementsExternal: totalElementsExternal,
             inProgress: inProgress,
             blocked: blocked,
             filter: filter,
@@ -158,24 +168,49 @@ exports.getOrganizationCompanyByUser = async (req, res, next) => {
                {
                   model: Users,
                   where: { id: id },
-                  attributes: []
+                  attributes: ['firstName', 'lastName'],
+                  include: [
+                     {
+                        model: Roles,
+                        attributes: ['name']
+                     }
+                  ]
                },
                {
                   model: Companies,
-                  attributes: ['id', 'name'],
+                  attributes: ['id', 'name', 'picture'],
                   include: [
                      {
                         model: Organizations,
-                        attributes: ['id', 'name']
+                        attributes: ['id', 'name', 'picture']
                      }
                   ]
                }
             ]
          })
-         return res.json({ 
-            organization: data.Company.Organization.name, 
+         return res.json({
+            organization: data.Company.Organization.name,
             company: data.Company.name,
-            content: data 
+            content: data
+         })
+      }
+      else {
+         const data = await Users.findOne({
+            where: {id: id},
+            attributes: ['lastName', 'firstName'],
+            include: [
+               {
+                  model: Roles,
+                  attributes: ['name']
+               }
+            ]
+         })
+         return res.json({
+            organization: '',
+            company: '',
+            content: {
+               User: data
+            }
          })
       }
 

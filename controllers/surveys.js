@@ -17,7 +17,6 @@ exports.getAll = async (req, res, next) => {
 
     try {
         let whereClause = {}
-        console.log("========ERROR=======", status)
         if (status) whereClause.idStatus = status
 
         if (keyboard) {

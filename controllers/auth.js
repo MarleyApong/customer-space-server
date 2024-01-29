@@ -44,10 +44,7 @@ exports.connect = async (req, res, next) => {
         await LogsUsers.create({ id: uuid(), idUser: user.id, login: new Date().toISOString() })
 
         return res.json({
-            id: user.id,
-            status: user.Status,
-            role: user.Role,
-            env: user.Env,
+            user: user,
             token: token
         })
     }

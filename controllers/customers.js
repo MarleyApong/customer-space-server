@@ -44,23 +44,23 @@ exports.getAll = async (req, res, next) => {
             order: [[filter, sort]],
         })
 
-        const inProgress = await Customers.count({
-            include: [
-                {
-                    model: Status,
-                    where: { name: 'actif' }
-                }
-            ]
-        })
+        // const inProgress = await Customers.count({
+        //     include: [
+        //         {
+        //             model: Status,
+        //             where: { name: 'actif' }
+        //         }
+        //     ]
+        // })
 
-        const blocked = await Customers.count({
-            include: [
-                {
-                    model: Status,
-                    where: { name: 'inactif' }
-                }
-            ]
-        })
+        // const blocked = await Customers.count({
+        //     include: [
+        //         {
+        //             model: Status,
+        //             where: { name: 'inactif' }
+        //         }
+        //     ]
+        // })
         const totalElements = await Customers.count()
         if (!data) throw new customError('NotFound', `${label} not found`)
 
@@ -70,8 +70,8 @@ exports.getAll = async (req, res, next) => {
                 totalpages: Math.ceil(totalElements / limit),
                 currentElements: data.length,
                 totalElements: totalElements,
-                inProgress: inProgress,
-                blocked: blocked,
+                // inProgress: inProgress,
+                // blocked: blocked,
                 filter: filter,
                 sort: sort,
                 limit: limit,
