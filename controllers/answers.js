@@ -89,11 +89,13 @@ exports.add = async (req, res, next) => {
         const responses = req.body
         const idCustomer = responses.length > 0 ? responses[0].idCustomer : null
 
-        if (!responses || !Array.isArray(responses.data) || responses.length === 0) {
+        if (!responses || !Array.isArray(responses) || responses.length === 0) {
             throw new customError('MissingData', 'missing or invalid data')
         }
 
-        const answersData = await Promise.all(responses.data.map(async (response) => {
+        await Customers.create({ id: idCustomer })
+
+        const answersData = await Promise.all(responses.map(async (response) => {
             const { idQuestion, note, suggestion, idCustomer } = response
             if (!idQuestion || !note) {
                 throw new customError('MissingData', 'missing or invalid data')
@@ -125,7 +127,6 @@ exports.add = async (req, res, next) => {
             
             return { answer: createdAnswer }
         }))
-        await Customers.create({ id: idCustomer })
 
         return res.status(201).json({ message: `${label}s created`, content: answersData })
     } catch (err) {

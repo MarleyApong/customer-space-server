@@ -1,6 +1,8 @@
+const fs = require('fs')
+const multer = require('multer')
 const { Op } = require('sequelize')
 const { v4: uuid } = require('uuid')
-const { Products, Users, Status } = require('../models')
+const { Products, Users, Status, Companies, Organizations } = require('../models')
 const customError = require('../hooks/customError')
 
 const label = "product"
@@ -10,18 +12,12 @@ const label = "product"
 exports.getAll = async (req, res, next) => {
     const page = parseInt(req.query.page) || 1
     const limit = parseInt(req.query.limit) || 10
-    const status = req.query.status
     const sort = req.query.sort || 'desc'
     const filter = req.query.filter || 'createdAt'
     const keyboard = req.query.k
 
     try {
         let whereClause = {}
-        if (status) {
-            let statusData = await Status.findOne({ where: { name: status } })
-            whereClause.idStatus = statusData.id
-        }
-
         if (keyboard) {
             if (filter !== 'createdAt' && filter !== 'updateAt' && filter !== 'deletedAt') {
                 whereClause = {
@@ -43,6 +39,18 @@ exports.getAll = async (req, res, next) => {
 
         const data = await Products.findAll({
             where: whereClause,
+            include: [
+                {
+                    model: Companies,
+                    attributes: ['id', 'name'],
+                    include: [
+                        {
+                            model: Organizations,
+                            attributes: ['id', 'name']
+                        }
+                    ]
+                }
+            ],
             limit: limit,
             offset: (page - 1) * limit,
             order: [[filter, sort]],
@@ -74,7 +82,21 @@ exports.getOne = async (req, res, next) => {
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
-        const data = await Products.findOne({ where: { id: id } })
+        const data = await Products.findOne({
+            where: { id: id },
+            include: [
+                {
+                    model: Companies,
+                    attributes: ['id', 'name'],
+                    include: [
+                        {
+                            model: Organizations,
+                            attributes: ['id', 'name']
+                        }
+                    ]
+                }
+            ]
+        })
         if (!data) throw new customError('NotFound', `${label} not found`)
 
         return res.json({ content: data })
@@ -86,18 +108,30 @@ exports.getOne = async (req, res, next) => {
 // CREATE
 exports.add = async (req, res, next) => {
     try {
-        const { name, price, category } = req.body
+        const { idCompany, name, price, category } = req.body
         if (!name || !price) throw new customError('MissingData', 'missing data')
 
         const id = uuid()
         let data = await Products.findOne({ where: { id: id } })
         if (data) throw new customError('AlreadtExist', `This ${label} already exists`)
 
+        let picturePath = '' // INITIALIZATION OF IMAGE PATH
+
+        console.log("req.file", req.file)
+        if (req.file) {
+            picturePath = req.file.path // PATH
+        }
+
+        // HERE, WE DELETE THE WORD 'PUBLIC' IN THE PATH
+        const pathWithoutPublic = picturePath.substring(6)
+        
         data = await Products.create({
             id: id,
+            idCompany: idCompany,
             name: name,
             price: price,
-            category: category
+            category: category,
+            picture: pathWithoutPublic
         })
 
         return res.status(201).json({ message: `${label} created`, content: data })
@@ -180,3 +214,21 @@ exports.restore = async (req, res, next) => {
         next(err)
     }
 }
+
+// IMPORT PICTURE
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        return cb(null, './public/imgs/product')
+    },
+    filename: (req, file, cb) => {
+        const extension = file.originalname.split('.').pop() // RETRIEVING THE FILE EXTENSION
+        const uniqueFilename = `${Date.now()}_${uuid()}.${extension}` // UNIQUE NAME
+        return cb(null, uniqueFilename)
+    }
+})
+
+
+exports.upload = multer({
+    storage: storage,
+    limits: { fileSize: 2 * 1024 * 1024 } // 2Mo
+}).single('picture')

@@ -102,6 +102,65 @@ exports.getOne = async (req, res, next) => {
     }
 }
 
+// CREATE
+exports.add = async (req, res, next) => {
+    try {
+        const { idUser, idProduct, quantity } = req.body
+        if (!idQuestion || !note) throw new customError('MissingData', 'missing data')
+        const id = uuid()
+        let data = await Orders.findOne({ where: { id: id } })
+        if (data) throw new customError('AlreadtExist', `This ${label} already exists`)
+
+        data = await Users.findOne({ where: { id: idUser } })
+        if (!data) if (data) throw new customError('NotFound', `${label} not created because the user with id: ${idUser} does not exist`)
+
+        await Tables.crea
+
+        data = await Orders.create({
+            id: uuid(),
+            idUser: idUser,
+            idTable: '',
+            idProduct: idProduct,
+            quantity: quantity
+        })
+        if (!data) throw new customError('BadRequest', `${label} not created`)
+
+        await OrdersProducts.create({
+            id: uuid(),
+            idOrder: idOrder,
+            idProduct: idProduct
+        })
+
+        await Notification.create({ id: uuid(), status: 1 })
+
+        return res.status(201).json({ message: `${label} created`, content: data })
+    } catch (err) {
+        next(err)
+    }
+}
+
+// UPDATE
+exports.update = async (req, res, next) => {
+    try {
+        const idCustomer = req.params.id
+        if (!idCustomer) throw new customError('MissingParams', 'missing parameter')
+
+        const {name, phone } = req.body
+        if (!name || !phone) throw new customError('MissingData', 'missing data')
+        let data = await Customers.findOne({ where: { id: idCustomer } })
+        if (!data) throw new customError('AlreadtExist', `this ${label} does not exist`)
+
+        data = await Customers.update({ name: name, phone: phone },
+            { where: { id: idCustomer } }
+        )
+        if (!data) throw new customError('BadRequest', `${label} not updated`)
+
+        return res.status(201).json({ message: `${label} updated`, content: data })
+    } catch (err) {
+        next(err)
+    }
+}
+
 // EMPTY TRASH
 exports.delete = async (req, res, next) => {
     try {

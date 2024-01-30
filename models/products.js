@@ -21,6 +21,10 @@ module.exports = (sequelize) => {
       },
       category: {
          type: DataTypes.STRING(30)
+      },
+      picture: {
+         type: DataTypes.STRING,
+         allowNull: false
       }
    }, { paranoid: true })
 
