@@ -131,7 +131,15 @@ exports.getCompanyByUser = async (req, res, next) => {
 
     try {
         let whereClause = {}
-        if (status) whereClause.idStatus = status
+        if (status) {
+            if (status !== 'actif' && status !== 'inactif') {
+                whereClause.idStatus = status
+            }
+            else {
+                const statusData = await Status.findOne({ where: { name: status } })
+                whereClause.idStatus = statusData.id
+            }
+        }
 
         if (keyboard) {
             if (filter !== 'createdAt' && filter !== 'updateAt' && filter !== 'deletedAt') {
@@ -152,7 +160,7 @@ exports.getCompanyByUser = async (req, res, next) => {
         }
 
         const id = req.params.id
-        if (!id) throw new customError('MissingParams', 'missing parameters')
+        if (!id) throw new customError('MissingParams', 'missing parameter')
 
         const totalCount = await Companies.count({
             include: [
@@ -193,7 +201,7 @@ exports.getCompanyByUser = async (req, res, next) => {
             }
         })
     } catch (err) {
-        // Gestion des erreurs
+        next(err)
     }
 }
 
@@ -202,12 +210,12 @@ exports.getCompanyByUser = async (req, res, next) => {
 exports.getCompaniesByOrganization = async (req, res, next) => {
     try {
         const id = req.params.id
-        const status = req.query.status
         if (!id) throw new customError('MissingParams', 'missing parameter')
-        if (!status) new customError('MissingData', 'missing data')
-        console.log("status:", status)
-        const statusData = await Status.findOne({ where: { name: status } })
 
+        const status = req.query.status
+        if (!status) new customError('MissingData', 'missing data')
+
+        const statusData = await Status.findOne({ where: { name: status } })
         const data = await Companies.findAll({
             where: { idStatus: statusData.id },
             include: [
@@ -373,7 +381,7 @@ exports.changeProfil = async (req, res, next) => {
 
             data = await Companies.update({ picture: pathWithoutPublic }, { where: { id: id } })
             if (!data) throw new customError('BadRequest', `${label} not modified`)
-            return res.json({ message: 'Picture updated' })
+            return res.json({ message: 'picture updated' })
         }
     } catch (err) {
         next(err)

@@ -2,7 +2,7 @@ const fs = require('fs')
 const multer = require('multer')
 const { Op } = require('sequelize')
 const { v4: uuid } = require('uuid')
-const { Products, Users, Status, Companies, Organizations } = require('../models')
+const { Products, Users, Status, Companies, Organizations, UsersCompanies } = require('../models')
 const customError = require('../hooks/customError')
 
 const label = "product"
@@ -105,6 +105,91 @@ exports.getOne = async (req, res, next) => {
     }
 }
 
+// GET PRODUCTS BY USER
+exports.getProductByUser = async (req, res, next) => {
+    const page = parseInt(req.query.page) || 1
+    const limit = parseInt(req.query.limit) || 10
+    const sort = req.query.sort || 'desc'
+    const filter = req.query.filter || 'createdAt'
+    const keyboard = req.query.k
+
+    try {
+        let whereClause = {}
+
+        if (keyboard) {
+            if (filter !== 'createdAt' && filter !== 'updateAt' && filter !== 'deletedAt') {
+                whereClause = {
+                    ...whereClause,
+                    [filter]: {
+                        [Op.like]: `%${keyboard}%`
+                    }
+                }
+            } else {
+                whereClause = {
+                    ...whereClause,
+                    [filter]: {
+                        [Op.between]: [new Date(keyboard), new Date(keyboard + " 23:59:59")]
+                    }
+                }
+            }
+        }
+
+        const id = req.params.id
+        if (!id) throw new customError('MissingParams', 'missing parameter')
+
+        const data = await Products.findAll({
+            include: [
+                {
+                    model: Companies,
+                    include: [
+                        {
+                            model: UsersCompanies,
+                            where: { idUser: id },
+                        }
+                    ]
+                },
+                
+            ],
+            where: whereClause,
+            offset: (page - 1) * limit,
+            limit: limit,
+            order: [[filter, sort]],
+        })
+
+        const totalCount = await Products.count({
+            include: [
+                {
+                    model: Companies,
+                    include: [
+                        {
+                            model: UsersCompanies,
+                            where: { idUser: id },
+                        }
+                    ]
+                },
+            ],
+            where: whereClause
+        })
+
+        return res.json({
+            totalCompanies: totalCount,
+            content: {
+                data: data,
+                totalPages: Math.ceil(totalCount / limit),
+                currentElements: data.length,
+                totalElements: totalCount,
+                filter: filter,
+                sort: sort,
+                limit: limit,
+                page: page
+            }
+        })
+    } catch (err) {
+        next(err)
+    }
+}
+
+
 // CREATE
 exports.add = async (req, res, next) => {
     try {
@@ -124,7 +209,7 @@ exports.add = async (req, res, next) => {
 
         // HERE, WE DELETE THE WORD 'PUBLIC' IN THE PATH
         const pathWithoutPublic = picturePath.substring(6)
-        
+
         data = await Products.create({
             id: id,
             idCompany: idCompany,
@@ -144,21 +229,65 @@ exports.add = async (req, res, next) => {
 exports.update = async (req, res, next) => {
     try {
         const id = req.params.id
-        const { name, price, category } = req.body
         if (!id) throw new customError('MissingParams', 'missing parameter')
-        if (!body) throw new customError('MissingData', 'missing data')
+
+        const { name, price, category, picture } = req.body
+        let data = await Products.findOne({ where: { id: id } })
+        if (!data) throw new customError('NotFound', `${label} not exist`)
+
+        console.log("body", req.body)
+
+        const updatedFields = {
+            name: name,
+            price: price,
+            category: category
+        }
+
+        if (req.file) {
+            if (data.picture) {
+                const filePath = data.picture
+                fs.unlinkSync(filePath) // DELETING LAST IMAGE
+            }
+
+            const extension = req.file.originalname.split('.').pop() // RETRIEVING THE FILE EXTENSION
+            const newPicturePath = `/imgs/product/${Date.now()}_${uuid()}.${extension}` // NEW PATH
+
+            fs.renameSync(req.file.path, `.${newPicturePath}`)
+            updatedFields.picture = newPicturePath // STORING THEN NEW IMAGE PATH
+        }
+
+        data = await Products.update(updatedFields, { where: { id: id } })
+        if (!data) throw new customError('BadRequest', `${label} not modified`)
+
+        return res.json({ message: `${label} modified` })
+    } catch (err) {
+        next(err)
+    }
+}
+
+// PATCH PICTURE
+exports.changeProfil = async (req, res, next) => {
+    try {
+        const id = req.params.id
+        if (!id) throw new customError('MissingParams', 'missing parameter')
 
         let data = await Products.findOne({ where: { id: id } })
         if (!data) throw new customError('NotFound', `${label} not exist`)
 
-        data = await Products.update({
-            name: name,
-            price: price,
-            category: category
-        }, { where: { id: id } })
-        if (!data) throw new customError('BadRequest', `${label} not modified`)
+        if (req.file) {
+            let data = await Products.findOne({ where: { id: id } })
+            if (data.picture) {
+                const filename = `public${data.picture}`
+                fs.unlinkSync(filename)
+            }
 
-        return res.json({ message: `${label} modified` })
+            // HERE, WE DELETE THE WORD PUBLIC IN THE PATH
+            const pathWithoutPublic = req.file.path.substring(6)
+
+            data = await Products.update({ picture: pathWithoutPublic }, { where: { id: id } })
+            if (!data) throw new customError('BadRequest', `${label} not modified`)
+            return res.json({ message: 'picture updated' })
+        }
     } catch (err) {
         next(err)
     }
