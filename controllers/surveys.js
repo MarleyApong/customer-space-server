@@ -42,15 +42,15 @@ exports.getAll = async (req, res, next) => {
             where: whereClause,
             include: [
                 { model: Questions },
-                { 
+                {
                     model: Companies,
                     include: [
                         Organizations
-                    ] 
+                    ]
                 },
                 {
                     model: Status,
-                    attributes: ['id','name']
+                    attributes: ['id', 'name']
                 }
             ],
             limit: limit,
@@ -58,7 +58,7 @@ exports.getAll = async (req, res, next) => {
             order: [[filter, sort]],
         })
 
-       const inProgress = await Surveys.count({
+        const inProgress = await Surveys.count({
             include: [
                 {
                     model: Status,
@@ -66,7 +66,7 @@ exports.getAll = async (req, res, next) => {
                 }
             ]
         })
-        
+
         const blocked = await Surveys.count({
             include: [
                 {
@@ -108,15 +108,15 @@ exports.getOne = async (req, res, next) => {
         const data = await Surveys.findOne({
             where: { id: id }, include: [
                 { model: Questions },
-                { 
+                {
                     model: Companies,
                     include: [
                         Organizations
-                    ] 
+                    ]
                 },
                 {
                     model: Status,
-                    attributes: ['id','name']
+                    attributes: ['id', 'name']
                 }
             ],
         })
@@ -137,6 +137,18 @@ exports.add = async (req, res, next) => {
         if (!idCompany || !idStatus || !name) throw new customError('MissingData', 'missing data')
         let data = await Surveys.findOne({ where: { id: id } })
         if (data) throw new customError('AlreadtExist', `This ${label} already exists`)
+
+        data = await Products.findOne({
+            where: {
+                [Op.and]: [
+                    { id: id },
+                    { name: name },
+                ]
+            }
+        })
+        if (data.name === name) {
+            throw new customError('AlreadtExist', `this ${label} already exists`)
+        }
 
         data = await Companies.findOne({ where: { id: idCompany } })
         if (!data) if (data) throw new customError('NotFound', `${label} not created because the company with id: ${idUser} does not exist`)
@@ -185,7 +197,7 @@ exports.changeStatus = async (req, res, next) => {
                 { model: Status }
             ]
         })
-        
+
         let status = 'actif'
         if (data.Status.name === 'actif') status = 'inactif'
         data = await Status.findOne({ where: { name: status } })

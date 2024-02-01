@@ -7,6 +7,7 @@ const router = express.Router()
 
 // ROUTING RESSOURCE COMPANIES
 router.get('/', checkToken, ctrl.getAll)
+router.get('/users/:id', checkToken, ctrl.getTablesByUser)
 router.get('/:id', checkToken, ctrl.getOne)
 router.put('/', checkToken, ctrl.add)
 router.patch('/:id', checkToken, ctrl.update)

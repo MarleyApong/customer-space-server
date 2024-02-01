@@ -1,5 +1,5 @@
 const { Op } = require('sequelize')
-const { Customers, Answers, Status } = require('../models')
+const { Customers, Answers, Status, AnswersCustomers, QuestionsAnswers, Questions, Surveys, Companies, UsersCompanies, Users, Organizations } = require('../models')
 const customError = require('../hooks/customError')
 
 var label = "customer"
@@ -35,43 +35,93 @@ exports.getAll = async (req, res, next) => {
         }
 
         const data = await Customers.findAll({
-            where: whereClause,
+            // attributes: [],
             include: [
-                { model: Answers }
+                {
+                    model: AnswersCustomers,
+                    include: [
+                        {
+                            model: Answers,
+                            attributes: ['note', 'suggestion'],
+                            include: [
+                                {
+                                    model: QuestionsAnswers,
+                                    attributes: ['id'],
+                                    include: [
+                                        {
+                                            model: Questions,
+                                            attributes: ['name'],
+                                            include: [
+                                                {
+                                                    model: Surveys,
+                                                    attributes: ['name'],
+                                                    include: [
+                                                        {
+                                                            model: Companies,
+                                                            attributes: ['name'],
+                                                            include: [
+                                                                {
+                                                                    model: Organizations,
+                                                                    attributes: ['name']
+                                                                }
+                                                            ]
+                                                        }
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
             ],
-            limit: limit,
+            where: {
+                name: {
+                    [Op.not]: null,
+                },
+                ...whereClause
+            },
             offset: (page - 1) * limit,
+            limit: limit,
             order: [[filter, sort]],
         })
 
-        // const inProgress = await Customers.count({
-        //     include: [
-        //         {
-        //             model: Status,
-        //             where: { name: 'actif' }
-        //         }
-        //     ]
-        // })
-
-        // const blocked = await Customers.count({
-        //     include: [
-        //         {
-        //             model: Status,
-        //             where: { name: 'inactif' }
-        //         }
-        //     ]
-        // })
-        const totalElements = await Customers.count()
+        const totalElements = await Customers.count({
+            where: {
+                name: {
+                    [Op.not]: null,
+                }
+            }
+        })
         if (!data) throw new customError('NotFound', `${label} not found`)
+
+        const formattedData = data.map(customer => ({
+            id: customer.id,
+            name: customer.name,
+            phone: customer.phone,
+            createdAt: customer.createdAt,
+            survey: customer.Answers_Customers[0].Answer.Questions_Answers[0].Question.Survey.name,
+            company: customer.Answers_Customers[0].Answer.Questions_Answers[0].Question.Survey.Company.name,
+            organization: customer.Answers_Customers[0].Answer.Questions_Answers[0].Question.Survey.Company.Organization.name,
+            questions: customer.Answers_Customers.map(answerCustomer => ({
+                name: answerCustomer.Answer.Questions_Answers[0].Question.name,
+                reponses: [
+                    {
+                        note: answerCustomer.Answer.note,
+                        suggestion: answerCustomer.Answer.suggestion
+                    }
+                ]
+            }))
+        }))
 
         return res.json({
             content: {
-                data: data,
+                data: formattedData,
                 totalpages: Math.ceil(totalElements / limit),
                 currentElements: data.length,
                 totalElements: totalElements,
-                // inProgress: inProgress,
-                // blocked: blocked,
                 filter: filter,
                 sort: sort,
                 limit: limit,
@@ -90,13 +140,215 @@ exports.getOne = async (req, res, next) => {
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
         const data = await Customers.findOne({
-            where: { id: id },
+            // attributes: [],
             include: [
-                { model: Answers }],
+                {
+                    model: AnswersCustomers,
+                    include: [
+                        {
+                            model: Answers,
+                            attributes: ['note', 'suggestion'],
+                            include: [
+                                {
+                                    model: QuestionsAnswers,
+                                    attributes: ['id'],
+                                    include: [
+                                        {
+                                            model: Questions,
+                                            attributes: ['name'],
+                                            include: [
+                                                {
+                                                    model: Surveys,
+                                                    attributes: ['name'],
+                                                    include: [
+                                                        {
+                                                            model: Companies,
+                                                            attributes: ['name'],
+                                                            include: [
+                                                                {
+                                                                    model: Organizations,
+                                                                    attributes: ['name']
+                                                                }
+                                                            ]
+                                                        }
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ],
+            where: {
+                id: id,
+                name: {
+                    [Op.not]: null,
+                },
+            }
         })
         if (!data) throw new customError('NotFound', `${label} not found`)
 
-        return res.json({ content: data })
+        const formattedData = {
+            id: data.id,
+            name: data.name,
+            phone: data.phone,
+            createdAt: data.createdAt,
+            survey: data.Answers_Customers[0].Answer.Questions_Answers[0].Question.Survey.name,
+            company: data.Answers_Customers[0].Answer.Questions_Answers[0].Question.Survey.Company.name,
+            organization: data.Answers_Customers[0].Answer.Questions_Answers[0].Question.Survey.Company.Organization.name,
+            questions: data.Answers_Customers.map(answerCustomer => ({
+                name: answerCustomer.Answer.Questions_Answers[0].Question.name,
+                note: answerCustomer.Answer.note,
+                suggestion: answerCustomer.Answer.suggestion
+            }))
+        }
+
+        return res.json({ content: formattedData })
+
+    } catch (err) {
+        next(err)
+    }
+}
+
+// GET TABLES BY USER
+exports.getCustomerByUser = async (req, res, next) => {
+    const page = parseInt(req.query.page) || 1
+    const limit = parseInt(req.query.limit) || 10
+    const sort = req.query.sort || 'desc'
+    const filter = req.query.filter || 'createdAt'
+    const keyboard = req.query.k
+
+    try {
+        let whereClause = {}
+
+        if (keyboard) {
+            if (filter !== 'createdAt' && filter !== 'updateAt' && filter !== 'deletedAt') {
+                whereClause = {
+                    ...whereClause,
+                    [filter]: {
+                        [Op.like]: `%${keyboard}%`
+                    }
+                }
+            } else {
+                whereClause = {
+                    ...whereClause,
+                    [filter]: {
+                        [Op.between]: [new Date(keyboard), new Date(keyboard + " 23:59:59")]
+                    }
+                }
+            }
+        }
+
+        const id = req.params.id
+        if (!id) throw new customError('MissingParams', 'missing parameter')
+
+        const data = await Customers.findAll({
+            // attributes: [],
+            include: [
+                {
+                    model: AnswersCustomers,
+                    include: [
+                        {
+                            model: Answers,
+                            attributes: ['note', 'suggestion'],
+                            include: [
+                                {
+                                    model: QuestionsAnswers,
+                                    attributes: ['id'],
+                                    include: [
+                                        {
+                                            model: Questions,
+                                            attributes: ['name'],
+                                            include: [
+                                                {
+                                                    model: Surveys,
+                                                    attributes: ['name'],
+                                                    include: [
+                                                        {
+                                                            model: Companies,
+                                                            attributes: ['name'],
+                                                            include: [
+                                                                {
+                                                                    model: UsersCompanies,
+                                                                    attributes: ['id'],
+                                                                    include: [
+                                                                        {
+                                                                            model: Users,
+                                                                            where: {id: id},
+                                                                            attributes: ['id']
+                                                                        }
+                                                                    ]
+                                                                },
+                                                                {
+                                                                    model: Organizations,
+                                                                    attributes: ['name']
+                                                                }
+                                                            ]
+                                                        }
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ],
+            where: {
+                name: {
+                    [Op.not]: null,
+                },
+                ...whereClause
+            },
+            offset: (page - 1) * limit,
+            limit: limit,
+            order: [[filter, sort]],
+        })
+
+        const formattedData = data.map(customer => ({
+            id: customer.id,
+            name: customer.name,
+            phone: customer.phone,
+            createdAt: customer.createdAt,
+            survey: customer.Answers_Customers[0].Answer.Questions_Answers[0].Question.Survey.name,
+            company: customer.Answers_Customers[0].Answer.Questions_Answers[0].Question.Survey.Company.name,
+            organization: customer.Answers_Customers[0].Answer.Questions_Answers[0].Question.Survey.Company.Organization.name,
+            questions: customer.Answers_Customers.map(answerCustomer => ({
+                name: answerCustomer.Answer.Questions_Answers[0].Question.name,
+                reponses: [
+                    {
+                        note: answerCustomer.Answer.note,
+                        suggestion: answerCustomer.Answer.suggestion
+                    }
+                ]
+            }))
+        }))
+
+        const totalElements = await Customers.count({
+            where: {
+                name: {
+                    [Op.not]: null,
+                }
+            }
+        })
+
+        return res.json({
+            content: {
+                data: formattedData,
+                totalpages: Math.ceil(totalElements / limit),
+                currentElements: data.length,
+                totalElements: totalElements,
+                filter: filter,
+                sort: sort,
+                limit: limit,
+                page: page,
+            }
+        })
     } catch (err) {
         next(err)
     }
@@ -145,7 +397,7 @@ exports.update = async (req, res, next) => {
         const idCustomer = req.params.id
         if (!idCustomer) throw new customError('MissingParams', 'missing parameter')
 
-        const {name, phone } = req.body
+        const { name, phone } = req.body
         if (!name || !phone) throw new customError('MissingData', 'missing data')
         let data = await Customers.findOne({ where: { id: idCustomer } })
         if (!data) throw new customError('AlreadtExist', `this ${label} does not exist`)

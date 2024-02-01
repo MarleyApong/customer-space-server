@@ -148,7 +148,7 @@ exports.getProductByUser = async (req, res, next) => {
                         }
                     ]
                 },
-                
+
             ],
             where: whereClause,
             offset: (page - 1) * limit,
@@ -198,11 +198,22 @@ exports.add = async (req, res, next) => {
 
         const id = uuid()
         let data = await Products.findOne({ where: { id: id } })
-        if (data) throw new customError('AlreadtExist', `This ${label} already exists`)
+        if (data) throw new customError('AlreadtExist', `this ${label} already exists`)
+
+        data = await Products.findOne({
+            where: {
+                [Op.and]: [
+                    { id: id },
+                    { name: name },
+                ]
+            }
+        })
+        if (data.name === name) {
+            throw new customError('AlreadtExist', `this ${label} already exists`)
+        }
 
         let picturePath = '' // INITIALIZATION OF IMAGE PATH
 
-        console.log("req.file", req.file)
         if (req.file) {
             picturePath = req.file.path // PATH
         }
@@ -234,8 +245,6 @@ exports.update = async (req, res, next) => {
         const { name, price, category, picture } = req.body
         let data = await Products.findOne({ where: { id: id } })
         if (!data) throw new customError('NotFound', `${label} not exist`)
-
-        console.log("body", req.body)
 
         const updatedFields = {
             name: name,
