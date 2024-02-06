@@ -1,8 +1,8 @@
 const { Op } = require('sequelize')
-const { Customers, Answers, Status, AnswersCustomers, QuestionsAnswers, Questions, Surveys, Companies, UsersCompanies, Users, Organizations } = require('../models')
+const { Customers, Answers, AnswersCustomers, QuestionsAnswers, Questions, Surveys, Companies, UsersCompanies, Users, Organizations } = require('../models')
 const customError = require('../hooks/customError')
 
-var label = "customer"
+const label = "customer"
 
 // ROUTING RESSOURCE
 // GET ALL
@@ -309,6 +309,64 @@ exports.getCustomerByUser = async (req, res, next) => {
             limit: limit,
             order: [[filter, sort]],
         })
+        
+        const countCustomer = await Customers.findAll({
+            // attributes: [],
+            include: [
+                {
+                    model: AnswersCustomers,
+                    include: [
+                        {
+                            model: Answers,
+                            attributes: ['note', 'suggestion'],
+                            include: [
+                                {
+                                    model: QuestionsAnswers,
+                                    attributes: ['id'],
+                                    include: [
+                                        {
+                                            model: Questions,
+                                            attributes: ['name'],
+                                            include: [
+                                                {
+                                                    model: Surveys,
+                                                    attributes: ['name'],
+                                                    include: [
+                                                        {
+                                                            model: Companies,
+                                                            attributes: ['name'],
+                                                            include: [
+                                                                {
+                                                                    model: UsersCompanies,
+                                                                    attributes: ['id'],
+                                                                    include: [
+                                                                        {
+                                                                            model: Users,
+                                                                            where: {id: id},
+                                                                            attributes: ['id']
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            ]
+                                                        }
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ],
+            where: {
+                name: {
+                    [Op.not]: null,
+                },
+            }
+        })
+        
 
         const formattedData = data.map(customer => ({
             id: customer.id,
@@ -343,49 +401,13 @@ exports.getCustomerByUser = async (req, res, next) => {
                 totalpages: Math.ceil(totalElements / limit),
                 currentElements: data.length,
                 totalElements: totalElements,
+                totalCutomerByUser: countCustomer.length,
                 filter: filter,
                 sort: sort,
                 limit: limit,
                 page: page,
             }
         })
-    } catch (err) {
-        next(err)
-    }
-}
-
-// CREATE
-exports.add = async (req, res, next) => {
-    try {
-        const { idUser, idProduct, quantity } = req.body
-        if (!idQuestion || !note) throw new customError('MissingData', 'missing data')
-        const id = uuid()
-        let data = await Orders.findOne({ where: { id: id } })
-        if (data) throw new customError('AlreadtExist', `This ${label} already exists`)
-
-        data = await Users.findOne({ where: { id: idUser } })
-        if (!data) if (data) throw new customError('NotFound', `${label} not created because the user with id: ${idUser} does not exist`)
-
-        await Tables.crea
-
-        data = await Orders.create({
-            id: uuid(),
-            idUser: idUser,
-            idTable: '',
-            idProduct: idProduct,
-            quantity: quantity
-        })
-        if (!data) throw new customError('BadRequest', `${label} not created`)
-
-        await OrdersProducts.create({
-            id: uuid(),
-            idOrder: idOrder,
-            idProduct: idProduct
-        })
-
-        await Notification.create({ id: uuid(), status: 1 })
-
-        return res.status(201).json({ message: `${label} created`, content: data })
     } catch (err) {
         next(err)
     }
@@ -400,7 +422,7 @@ exports.update = async (req, res, next) => {
         const { name, phone } = req.body
         if (!name || !phone) throw new customError('MissingData', 'missing data')
         let data = await Customers.findOne({ where: { id: idCustomer } })
-        if (!data) throw new customError('AlreadtExist', `this ${label} does not exist`)
+        if (!data) throw new customError('AlreadyExist', `this ${label} does not exist`)
 
         data = await Customers.update({ name: name, phone: phone },
             { where: { id: idCustomer } }

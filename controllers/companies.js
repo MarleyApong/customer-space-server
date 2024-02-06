@@ -2,7 +2,7 @@ const fs = require('fs')
 const multer = require('multer')
 const { Op } = require('sequelize')
 const { v4: uuid } = require('uuid')
-const { Companies, Organizations, Surveys, Questions, Status, UsersCompanies, Users } = require('../models')
+const { Companies, Organizations, Surveys, Questions, Status, Users, UsersOrganizations } = require('../models')
 const customError = require('../hooks/customError')
 
 const label = "company"
@@ -19,7 +19,15 @@ exports.getAll = async (req, res, next) => {
 
     try {
         let whereClause = {}
-        if (status) whereClause.idStatus = status
+        if (status) {
+            if (status !== 'actif' && status !== 'inactif') {
+                whereClause.idStatus = status
+            }
+            else {
+                const statusData = await Status.findOne({ where: { name: status } })
+                whereClause.idStatus = statusData.id
+            }
+        }
 
         if (keyboard) {
             if (filter !== 'createdAt' && filter !== 'updateAt' && filter !== 'deletedAt') {
@@ -43,8 +51,14 @@ exports.getAll = async (req, res, next) => {
         const data = await Companies.findAll({
             where: whereClause,
             include: [
-                { model: Organizations },
-                { model: Surveys },
+                {
+                    model: Organizations,
+                    attributes: ['id', 'name']
+                },
+                {
+                    model: Surveys,
+                    attributes: ['id', 'name']
+                },
                 {
                     model: Status,
                     attributes: ['id', 'name']
@@ -165,9 +179,21 @@ exports.getCompanyByUser = async (req, res, next) => {
         const totalCount = await Companies.count({
             include: [
                 {
-                    model: UsersCompanies,
-                    where: { idUser: id },
-                    attributes: []
+                    model: Organizations,
+                    attributes: ['id'],
+                    include: [
+                        {
+                            model: UsersOrganizations,
+                            attributes: ['id'],
+                            include: [
+                                {
+                                    model: Users,
+                                    attributes: ['id'],
+                                    where: { id: id }
+                                }
+                            ]
+                        }
+                    ]
                 }
             ],
             where: whereClause
@@ -176,9 +202,21 @@ exports.getCompanyByUser = async (req, res, next) => {
         const userCompanies = await Companies.findAll({
             include: [
                 {
-                    model: UsersCompanies,
-                    where: { idUser: id },
-                    attributes: []
+                    model: Organizations,
+                    attributes: ['id'],
+                    include: [
+                        {
+                            model: UsersOrganizations,
+                            attributes: ['id'],
+                            include: [
+                                {
+                                    model: Users,
+                                    attributes: ['id'],
+                                    where: { id: id }
+                                }
+                            ]
+                        }
+                    ]
                 }
             ],
             where: whereClause,
@@ -204,7 +242,6 @@ exports.getCompanyByUser = async (req, res, next) => {
         next(err)
     }
 }
-
 
 // GET COMPANY BY ORGANIZATION
 exports.getCompaniesByOrganization = async (req, res, next) => {
@@ -271,7 +308,7 @@ exports.add = async (req, res, next) => {
         const id = uuid()
         if (!idStatus || !idOrganization || !name || !description || !phone || !city || !neighborhood) throw new customError('MissingData', 'missing data')
         let data = await Companies.findOne({ where: { id: id } })
-        if (data) throw new customError('AlreadtExist', `This ${label} already exists`)
+        if (data) throw new customError('AlreadyExist', `this ${label} already exists`)
 
         data = await Organizations.findOne({ where: { id: idOrganization } })
         if (!data) if (data) throw new customError('NotFound', `${label} not created because the organization with id: ${idOrganization} does not exist`)
@@ -475,7 +512,6 @@ const storage = multer.diskStorage({
         return cb(null, uniqueFilename)
     }
 })
-
 
 exports.upload = multer({
     storage: storage,

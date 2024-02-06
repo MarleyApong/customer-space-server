@@ -2,7 +2,7 @@ const fs = require('fs')
 const multer = require('multer')
 const { Op } = require('sequelize')
 const { v4: uuid } = require('uuid')
-const { Products, Users, Status, Companies, Organizations, UsersCompanies } = require('../models')
+const { Products, Companies, Organizations, UsersCompanies } = require('../models')
 const customError = require('../hooks/customError')
 
 const label = "product"
@@ -189,7 +189,6 @@ exports.getProductByUser = async (req, res, next) => {
     }
 }
 
-
 // CREATE
 exports.add = async (req, res, next) => {
     try {
@@ -198,7 +197,7 @@ exports.add = async (req, res, next) => {
 
         const id = uuid()
         let data = await Products.findOne({ where: { id: id } })
-        if (data) throw new customError('AlreadtExist', `this ${label} already exists`)
+        if (data) throw new customError('AlreadyExist', `this ${label} already exists`)
 
         data = await Products.findOne({
             where: {
@@ -209,7 +208,7 @@ exports.add = async (req, res, next) => {
             }
         })
         if (data.name === name) {
-            throw new customError('AlreadtExist', `this ${label} already exists`)
+            throw new customError('AlreadyExist', `this ${label} already exists`)
         }
 
         let picturePath = '' // INITIALIZATION OF IMAGE PATH

@@ -17,8 +17,13 @@ exports.getAll = async (req, res, next) => {
     try {
         let whereClause = {}
         if (status) {
-            let statusData = await Status.findOne({ where: { name: status } })
-            whereClause.idStatus = statusData.id
+            if (status !== 'actif' && status !== 'inactif') {
+                whereClause.idStatus = status
+            }
+            else {
+                const statusData = await Status.findOne({ where: { name: status } })
+                whereClause.idStatus = statusData.id
+            }
         }
 
         if (keyboard) {

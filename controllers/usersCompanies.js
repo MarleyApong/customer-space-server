@@ -1,5 +1,5 @@
 const { v4: uuid } = require('uuid')
-const { UsersCompanies, Users, Companies } = require('../models')
+const { UsersCompanies, Users, Companies, Status } = require('../models')
 const customError = require('../hooks/customError')
 
 const label = "assignment"
@@ -16,8 +16,15 @@ exports.getAll = async (req, res, next) => {
 
     try {
         let whereClause = {}
-        if (status) whereClause.idStatus = status
-
+        if (status) {
+            if (status !== 'actif' && status !== 'inactif') {
+                whereClause.idStatus = status
+            }
+            else {
+                const statusData = await Status.findOne({ where: { name: status } })
+                whereClause.idStatus = statusData.id
+            }
+        }
         if (keyboard) {
             if (filter !== 'createdAt' && filter !== 'updateAt' && filter !== 'deletedAt') {
                 whereClause = {
@@ -167,10 +174,10 @@ exports.delete = async (req, res, next) => {
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
         let data = await UsersCompanies.findOne({ where: { id: id } })
-        if (!data) throw new customError('NotFound', `This ${label} does not exist`)
+        if (!data) throw new customError('NotFound', `this ${label} does not exist`)
 
         data = await UsersCompanies.destroy({ where: { id: id }, force: true })
-        if (!data) throw new customError('AlreadyExist', `This ${label} already deleted`)
+        if (!data) throw new customError('AlreadyExist', `this ${label} already deleted`)
 
         return res.json({ message: `${label} deleted` })
     } catch (err) {

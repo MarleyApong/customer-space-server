@@ -7,7 +7,6 @@ const { Users, LogsUsers, Status, Roles, Envs } = require('../models')
 const customError = require('../hooks/customError')
 
 exports.connect = async (req, res, next) => {
-
     try {
         const { email, password } = req.body
         if (!email || !password) throw customError('MissingData', 'missing data')
@@ -30,7 +29,7 @@ exports.connect = async (req, res, next) => {
                 },
             ]
         })
-        if (!user) throw new customError('NotFound', `The user with ${email} does not exit`)
+        if (!user) throw new customError('NotFound', `the user with ${email} does not exit`)
 
         if (user.Status.name === 'inactif') throw new customError('AccessForbidden', `the user with ${email} have been blocked `)
 

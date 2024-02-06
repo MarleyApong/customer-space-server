@@ -1,8 +1,7 @@
-const fs = require('fs')
-const multer = require('multer')
+
 const { Op } = require('sequelize')
 const { v4: uuid } = require('uuid')
-const { Tables, Users, Status, Companies, Organizations, UsersCompanies } = require('../models')
+const { Tables, Companies, Organizations, UsersCompanies } = require('../models')
 const customError = require('../hooks/customError')
 
 const label = "table"
@@ -210,12 +209,28 @@ exports.add = async (req, res, next) => {
                 tableNumber: tableNumber 
             } 
         })
-        if (data) throw new customError('AlreadtExist', `This ${label} already exists`)
+        if (data) throw new customError('AlreadyExist', `this ${label} already exists`)
+
+        data = await Companies.findOne({
+            attributes: ['id', 'name'],
+            where: {id: idCompany},
+            include: [
+                {
+                    model: Organizations,
+                    attributes: ['name']
+                }
+            ]
+        })
+
+        const organization = data.Organization.name
+        const company = data.name
+        const webPage = `${organization}/${company}/home?t=${tableNumber}`
 
         data = await Tables.create({
             id: id,
             idCompany: idCompany,
-            tableNumber: tableNumber
+            tableNumber: tableNumber,
+            webPage: webPage
         })
 
         return res.status(201).json({ message: `${label} created`, content: data })
@@ -245,7 +260,7 @@ exports.update = async (req, res, next) => {
                 tableNumber: tableNumber 
             } 
         })
-        if (data) throw new customError('AlreadtExist', `This ${label} already exists`)
+        if (data) throw new customError('AlreadyExist', `this ${label} already exists`)
 
         data = await Tables.update({ tableNumber: tableNumber }, { where: { id: id } })
         if (!data) throw new customError('BadRequest', `${label} not modified`)

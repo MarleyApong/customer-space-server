@@ -89,9 +89,9 @@ const init = async () => {
 init()
 
 // NOT FOUND
-// app.use((req, res, next) => {
-//     res.status(404).send("Fuck you !")
-// })
+app.use((req, res, next) => {
+    res.status(404).send("Fuck you !")
+})
 
 // MANAGER ERROR
 app.use(errorHandler)

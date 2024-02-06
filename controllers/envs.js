@@ -1,4 +1,3 @@
-const { v4: uuid } = require('uuid')
 const { Envs } = require('../models')
 const customError = require('../hooks/customError')
 

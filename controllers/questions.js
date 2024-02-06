@@ -18,8 +18,13 @@ exports.getAll = async (req, res, next) => {
     try {
         let whereClause = {}
         if (status) {
-            let statusData = await Status.findOne({ where: { name: status } })
-            whereClause.idStatus = statusData.id
+            if (status !== 'actif' && status !== 'inactif') {
+                whereClause.idStatus = status
+            }
+            else {
+                const statusData = await Status.findOne({ where: { name: status } })
+                whereClause.idStatus = statusData.id
+            }
         }
 
         if (keyboard) {
@@ -48,7 +53,7 @@ exports.getAll = async (req, res, next) => {
             offset: (page - 1) * limit,
             order: [[filter, sort]],
         })
-        const totalElements = await Customers.count()
+        const totalElements = await Questions.count()
         if (!data) throw new customError('NotFound', `${label} not found`)
 
         return res.json({
@@ -94,7 +99,7 @@ exports.add = async (req, res, next) => {
         if (!idSurvey || !name) throw new customError('MissingData', 'missing data')
         const id = uuid()
         let data = await Questions.findOne({ where: { id: id } })
-        if (data) throw new customError('AlreadtExist', `This ${label} already exists`)
+        if (data) throw new customError('AlreadyExist', `this ${label} already exists`)
 
         data = await Surveys.findOne({ where: { id: idSurvey } })
         if (!data) if (data) throw new customError('NotFound', `${label} not created because the survey with id: ${idSurvey} does not exist`)

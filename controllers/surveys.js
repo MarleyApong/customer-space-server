@@ -1,6 +1,6 @@
 const { Op } = require('sequelize')
 const { v4: uuid } = require('uuid')
-const { Surveys, Questions, Companies, Organizations, Status } = require('../models')
+const { Surveys, Questions, Companies, Organizations, Status, UsersCompanies, Users } = require('../models')
 const customError = require('../hooks/customError')
 
 const label = "survey"
@@ -17,7 +17,15 @@ exports.getAll = async (req, res, next) => {
 
     try {
         let whereClause = {}
-        if (status) whereClause.idStatus = status
+        if (status) {
+            if (status !== 'actif' && status !== 'inactif') {
+                whereClause.idStatus = status
+            }
+            else {
+                const statusData = await Status.findOne({ where: { name: status } })
+                whereClause.idStatus = statusData.id
+            }
+        }
 
         if (keyboard) {
             if (filter !== 'createdAt' && filter !== 'updateAt' && filter !== 'deletedAt') {
@@ -106,7 +114,8 @@ exports.getOne = async (req, res, next) => {
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
         const data = await Surveys.findOne({
-            where: { id: id }, include: [
+            where: { id: id },
+            include: [
                 { model: Questions },
                 {
                     model: Companies,
@@ -128,6 +137,138 @@ exports.getOne = async (req, res, next) => {
     }
 }
 
+// GET SURVEYS BY USER
+exports.getSurveysByUser = async (req, res, next) => {
+    const page = parseInt(req.query.page) || 1
+    const limit = parseInt(req.query.limit) || 10
+    const status = req.query.status
+    const sort = req.query.sort || 'desc'
+    const filter = req.query.filter || 'createdAt'
+    const keyboard = req.query.k
+
+
+    try {
+        const id = req.params.id
+        if (!id) throw new customError('MissingParams', 'missing parameter')
+
+        // let whereClause = {}
+        // if (status) {
+        //     if (status !== 'actif' && status !== 'inactif') {
+        //         whereClause.idStatus = status
+        //     }
+        //     else {
+        //         const statusData = await Status.findOne({ where: { name: status } })
+        //         whereClause.idStatus = statusData.id
+        //     }
+        // }
+
+        // if (keyboard) {
+        //     if (filter !== 'createdAt' && filter !== 'updateAt' && filter !== 'deletedAt') {
+        //         whereClause = {
+        //             [filter]: {
+        //                 [Op.like]: `%${keyboard}%`,
+        //             },
+        //         }
+        //     }
+        //     else {
+        //         whereClause = {
+        //             [filter]: {
+        //                 [Op.between]: [new Date(keyboard), new Date(keyboard + " 23:59:59")]
+        //             },
+        //         }
+        //     }
+        // }
+
+        const data = await Surveys.findAll({
+            include: [
+                {
+                    model: Status,
+                    attributes: ['name']
+                },
+                {
+                    model: Companies,
+                    attributes: ['id', 'name'],
+                    include: [
+                        {
+                            model: UsersCompanies,
+                            where: { idUser: id }
+                        }
+                    ]
+                }
+            ]
+        })
+
+        const inProgress = await Surveys.count({
+            attributes: ['id', 'name'],
+            include: [
+                {
+                    model: Status,
+                    attributes: ['id', 'name'],
+                    where: { name: 'actif' }
+                },
+                {
+                    model: Companies,
+                    attributes: ['id', 'name'],
+                    include: [
+                        {
+                            model: UsersCompanies,
+                            include: [
+                                {
+                                    model: Users,
+                                    where: { id: id }
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        })
+
+        const blocked = await Surveys.count({
+            include: [
+                {
+                    model: Status,
+                    where: { name: 'inactif' }
+                },
+                {
+                    model: Companies,
+                    attributes: ['id'],
+                    include: [
+                        {
+                            model: UsersCompanies,
+                            include: [
+                                {
+                                    model: Users,
+                                    where: { id: id }
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        })
+
+        const totalElements = await Surveys.count()
+        if (!data) throw new customError('NotFound', `${label} not found`)
+
+        return res.json({
+            content: data,
+            totalpages: Math.ceil(totalElements / limit),
+            currentElements: data.length,
+            totalElements: totalElements,
+            inProgress: inProgress,
+            blocked: blocked,
+            filter: filter,
+            sort: sort,
+            limit: limit,
+            page: page,
+        })
+
+    } catch (err) {
+        next(err)
+    }
+}
+
 // CREATE
 exports.add = async (req, res, next) => {
     try {
@@ -136,22 +277,11 @@ exports.add = async (req, res, next) => {
 
         if (!idCompany || !idStatus || !name) throw new customError('MissingData', 'missing data')
         let data = await Surveys.findOne({ where: { id: id } })
-        if (data) throw new customError('AlreadtExist', `This ${label} already exists`)
-
-        data = await Products.findOne({
-            where: {
-                [Op.and]: [
-                    { id: id },
-                    { name: name },
-                ]
-            }
-        })
-        if (data.name === name) {
-            throw new customError('AlreadtExist', `this ${label} already exists`)
-        }
+        if (data) throw new customError('AlreadyExist', `this ${label} already exists`)
 
         data = await Companies.findOne({ where: { id: idCompany } })
         if (!data) if (data) throw new customError('NotFound', `${label} not created because the company with id: ${idUser} does not exist`)
+
         data = await Surveys.create({
             id: id,
             idCompany: idCompany,
@@ -205,7 +335,7 @@ exports.changeStatus = async (req, res, next) => {
         data = await Surveys.update({ idStatus: data.id }, { where: { id: id } })
         if (!data) throw new customError('BadRequest', `${label} not modified`)
 
-        return res.json({ message: `${label} ${status === 1 ? 'active' : 'inactive'}` })
+        return res.json({ message: `${label} ${status === 'actif' ? 'active' : 'inactive'}` })
     } catch (err) {
         next(err)
     }

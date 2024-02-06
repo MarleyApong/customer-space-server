@@ -2,7 +2,7 @@ const { Op } = require('sequelize')
 const { v4: uuid } = require('uuid')
 const fs = require('fs')
 const multer = require('multer')
-const { Organizations, Companies, Status } = require('../models')
+const { Organizations, Companies, Status, UsersOrganizations, Users } = require('../models')
 const customError = require('../hooks/customError')
 
 const label = "organization"
@@ -20,8 +20,13 @@ exports.getAll = async (req, res, next) => {
     try {
         let whereClause = {}
         if (status) {
-            let statusData = await Status.findOne({ where: { name: status } })
-            whereClause.idStatus = statusData.id
+            if (status !== 'actif' && status !== 'inactif') {
+                whereClause.idStatus = status
+            }
+            else {
+                const statusData = await Status.findOne({ where: { name: status } })
+                whereClause.idStatus = statusData.id
+            }
         }
 
         if (keyboard) {
@@ -122,6 +127,37 @@ exports.getOne = async (req, res, next) => {
     }
 }
 
+// GET ORGANIZATION BY USER
+exports.getOrganizationByUser = async (req, res, next) => {
+    try {
+        const id = req.params.id
+        if (!id) throw new customError('MissingParams', 'missing parameter')
+
+        const data = await Organizations.findOne({
+            attributes: ['id', 'name'],
+            include: [
+                {
+                    model: UsersOrganizations,
+                    attributes: ['id'],
+                    include: [
+                        {
+                            model: Users,
+                            attributes: ['id'],
+                            where: { id: id }
+                        }
+                    ]
+                }
+            ]
+        })
+
+        if (!data) throw new customError('NotFound', `${label} not found`)
+
+        return res.json({ content: data })
+    } catch (err) {
+        next(err)
+    }
+}
+
 // CREATE
 exports.add = async (req, res, next) => {
     try {
@@ -139,7 +175,7 @@ exports.add = async (req, res, next) => {
         const pathWithoutPublic = picturePath.substring(6)
 
         let data = await Organizations.findOne({ where: { id: id } })
-        if (data) throw new customError('AlreadtExist', `This ${label} already exists`)
+        if (data) throw new customError('AlreadyExist', `this ${label} already exists`)
 
         data = await Organizations.create({
             id: id,

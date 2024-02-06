@@ -47,12 +47,6 @@ exports.getAll = async (req, res, next) => {
 
       const data = await Users.findAll({
          include: [
-            // {
-            //    model: Organizations,
-            //    include: [
-            //       { model: Companies }
-            //    ]
-            // },
             {
                model: Status,
                attributes: ['id', 'name']
@@ -96,7 +90,7 @@ exports.getAll = async (req, res, next) => {
          include: [
             {
                model: Envs,
-               attributes: [],
+               attributes: ['id', 'name'],
                where: {name: 'external'}
             }
          ]
@@ -232,7 +226,7 @@ exports.add = async (req, res, next) => {
       const regexPassword = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/
       const isValidPassword = regexPassword.test(password)
 
-      if (!isValidPassword) throw new customError('RegexPasswordValidationError', `The password does not meet security requirements`)
+      if (!isValidPassword) throw new customError('RegexPasswordValidationError', `the password does not meet security requirements`)
       let hash = await bcrypt.hash(password, parseInt(process.env.BCRYPT_SALT_ROUND))
       if (!hash) throw new customError('ProcessHashFailed', `${label} processing hash failed`)
 
@@ -245,17 +239,17 @@ exports.add = async (req, res, next) => {
       }
 
       const role = await Roles.findOne({ where: { id: idRole } })
-      if (role.name === 'super admin') {
-         data = await Users.count({
-            include: [
-               {
-                  model: Roles,
-                  where: { name: 'super admin' }
-               }
-            ]
-         })
-         if (data >= 2) throw new customError('AddLimitReached', `unauthorized operation`)
-      }
+      // if (role.name === 'super admin') {
+      //    data = await Users.count({
+      //       include: [
+      //          {
+      //             model: Roles,
+      //             where: { name: 'super admin' }
+      //          }
+      //       ]
+      //    })
+      //    if (data >= 2) throw new customError('AddLimitReached', `unauthorized operation`)
+      // }
 
       const EnvData = await Envs.findOne({ where: { name: env } })
       const idEnv = EnvData.id
@@ -302,7 +296,7 @@ exports.update = async (req, res, next) => {
       if (!id) throw new customError('MissingParams', 'missing parameter')
 
       let data = await Users.findOne({ where: { id: id } })
-      if (!data) throw new customError('NotFound', `This ${label} does not exist`)
+      if (!data) throw new customError('NotFound', `this ${label} does not exist`)
 
       data = await Users.update(req.body, { where: { id: id } })
       if (!data) throw new customError('BadRequest', `${label} does  not modified`)
@@ -346,7 +340,7 @@ exports.changeRole = async (req, res, next) => {
       if (!id) throw new customError('MissingParams', 'missing parameter')
 
       let data = await Users.findOne({ where: { id: id } })
-      if (!data) throw new customError('NotFound', `This ${label} does not exist`)
+      if (!data) throw new customError('NotFound', `this ${label} does not exist`)
 
       data = await Users.update({ idRole: role }, { where: { id: id } })
       if (!data) throw new customError('BadRequest', `${label} not modified`)
@@ -363,19 +357,19 @@ exports.changePassword = async (req, res, next) => {
       if (!id) throw new customError('MissingParams', 'missing parameter')
 
       let data = await Users.findOne({ where: { id: id } })
-      if (!data) throw new customError('NotFound', `This ${label} does not exist`)
+      if (!data) throw new customError('NotFound', `this ${label} does not exist`)
 
       // COMPARE PASSWORD
       const compare = await bcrypt.compare(lastPassword, data.password)
-      if (!compare) throw new customError('ProcessCompareFailed', 'Wrong password')
+      if (!compare) throw new customError('ProcessCompareFailed', 'wrong password')
 
       const regexPassword = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/
       const isValidPassword = regexPassword.test(newPassword)
 
-      if (!isValidPassword) throw new customError('RegexPasswordValidationError', `The password does not meet security requirements`)
+      if (!isValidPassword) throw new customError('RegexPasswordValidationError', `the password does not meet security requirements`)
 
       const hash = await bcrypt.hash(newPassword, parseInt(process.env.BCRYPT_SALT_ROUND))
-      if (!hash) throw new customError('ProcessHashFailed', 'Wrong password')
+      if (!hash) throw new customError('ProcessHashFailed', 'wrong password')
 
       data = await Users.update({ password: hash }, { where: { id: id } })
       if (!data) throw new customError('BadRequest', `${label} does  not modified`)

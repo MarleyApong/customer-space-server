@@ -1,6 +1,6 @@
 const { Op } = require('sequelize')
 const { v4: uuid } = require('uuid')
-const { Questions, Answers, QuestionsAnswers, Customers, AnswersCustomers, Status } = require('../models')
+const { Questions, Answers, QuestionsAnswers, Customers, AnswersCustomers, Status, Surveys, Companies, Organizations } = require('../models')
 const customError = require('../hooks/customError')
 
 const label = "answer"
@@ -18,8 +18,13 @@ exports.getAll = async (req, res, next) => {
     try {
         let whereClause = {}
         if (status) {
-            let statusData = await Status.findOne({ where: { name: status } })
-            whereClause.idStatus = statusData.id
+            if (status !== 'actif' && status !== 'inactif') {
+                whereClause.idStatus = status
+            }
+            else {
+                const statusData = await Status.findOne({ where: { name: status } })
+                whereClause.idStatus = statusData.id
+            }
         }
 
         if (keyboard) {
@@ -124,7 +129,7 @@ exports.add = async (req, res, next) => {
 
             await QuestionsAnswers.create({ id: uuid(), idQuestion: idQuestion, idAnswer: id })
             await AnswersCustomers.create({ id: uuid(), idAnswer: id, idCustomer: idCustomer })
-            
+
             return { answer: createdAnswer }
         }))
 
@@ -134,6 +139,58 @@ exports.add = async (req, res, next) => {
     }
 }
 
+// GET ANSWERS By ORGANIZATION
+exports.getAnswersByOrganization = async (req, res, next) => {
+    try {
+        const id = req.params.id
+        if (!id) throw new customError('MissingParams', 'missing parameter')
+
+        const data = await AnswersCustomers.findAll({
+            group: ['idCustomer'],
+            include: [
+                {
+                    model: Answers,
+                    attributes: ['id'],
+                    include: [
+                        {
+                            model: QuestionsAnswers,
+                            attributes: ['id'],
+                            include: [
+                                {
+                                    model: Questions,
+                                    attributes: ['id', 'name'],
+                                    include: [
+                                        {
+                                            model: Surveys,
+                                            attributes: ['id', 'name'],
+                                            include: [
+                                                {
+                                                    model: Companies,
+                                                    attributes: ['id'],
+                                                    include: [
+                                                        {
+                                                            model: Organizations,
+                                                            attributes: ['id'],
+                                                            where: { id: id }
+                                                        }
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        })
+
+        return res.json({ content: data })
+    } catch (err) {
+        next(err)
+    }
+}
 
 // PATCH
 exports.update = async (req, res, next) => {
