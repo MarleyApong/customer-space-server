@@ -189,6 +189,80 @@ exports.getProductByUser = async (req, res, next) => {
     }
 }
 
+// GET PRODUCTS BY COMPANY
+exports.getProductByCompany = async (req, res, next) => {
+    const page = parseInt(req.query.page) || 1
+    const limit = parseInt(req.query.limit) || 10
+    const sort = req.query.sort || 'asc'
+    const filter = req.query.filter || 'name'
+    const keyboard = req.query.k
+
+    try {
+        let whereClause = {}
+
+        if (keyboard) {
+            if (filter !== 'createdAt' && filter !== 'updateAt' && filter !== 'deletedAt') {
+                whereClause = {
+                    ...whereClause,
+                    [filter]: {
+                        [Op.like]: `%${keyboard}%`
+                    }
+                }
+            } else {
+                whereClause = {
+                    ...whereClause,
+                    [filter]: {
+                        [Op.between]: [new Date(keyboard), new Date(keyboard + " 23:59:59")]
+                    }
+                }
+            }
+        }
+
+        const webPage = req.params.id
+        if (!webPage) throw new customError('MissingParams', 'missing parameter')
+
+        const data = await Products.findAll({
+            include: [
+                {
+                    model: Companies,
+                    where: { webPage: webPage }
+                }
+            ],
+            where: whereClause,
+            offset: (page - 1) * limit,
+            limit: limit,
+            order: [[filter, sort]],
+        })
+
+        const totalCount = await Products.count({
+            include: [
+                {
+                    model: Companies,
+                    attributes: ['id', 'name'],
+                    where: { webPage: webPage }
+                },
+            ],
+            where: whereClause
+        })
+
+        return res.json({
+            totalCompanies: totalCount,
+            content: {
+                data: data,
+                totalPages: Math.ceil(totalCount / limit),
+                currentElements: data.length,
+                totalElements: totalCount,
+                filter: filter,
+                sort: sort,
+                limit: limit,
+                page: page
+            }
+        })
+    } catch (err) {
+        next(err)
+    }
+}
+
 // CREATE
 exports.add = async (req, res, next) => {
     try {
@@ -202,12 +276,11 @@ exports.add = async (req, res, next) => {
         data = await Products.findOne({
             where: {
                 [Op.and]: [
-                    { id: id },
                     { name: name },
                 ]
             }
         })
-        if (data.name === name) {
+        if (data) {
             throw new customError('AlreadyExist', `this ${label} already exists`)
         }
 

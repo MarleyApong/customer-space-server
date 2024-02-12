@@ -275,6 +275,8 @@ exports.getWebpage = async (req, res, next) => {
         const webpage = req.params.id
         if (!webpage) throw new customError('MissingParams', 'missing parameter')
 
+        console.log("+++webpage", webpage)
+
         const data = await Companies.findOne({
             where: { webpage: webpage },
             include: [

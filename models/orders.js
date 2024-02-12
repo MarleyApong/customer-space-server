@@ -14,10 +14,6 @@ module.exports = (sequelize) => {
     idTable: {
       type: DataTypes.STRING(64),
       allowNull: false
-    },
-    quantity: {
-      type: DataTypes.INTEGER(5),
-      allowNull: false
     }
   }, { paranoid: true })
 

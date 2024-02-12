@@ -212,7 +212,7 @@ exports.add = async (req, res, next) => {
         if (data) throw new customError('AlreadyExist', `this ${label} already exists`)
 
         data = await Companies.findOne({
-            attributes: ['id', 'name'],
+            attributes: ['id', 'name', 'webpage'],
             where: {id: idCompany},
             include: [
                 {
@@ -223,8 +223,9 @@ exports.add = async (req, res, next) => {
         })
 
         const organization = data.Organization.name
-        const company = data.name
-        const webPage = `${organization}/${company}/home?t=${tableNumber}`
+        const company = data.webpage
+        const webPage = `${organization}/${company}?fkpngt44tdot=${id}`
+
 
         data = await Tables.create({
             id: id,

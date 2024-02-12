@@ -13,6 +13,7 @@ module.exports = (sequelize) => {
       },
       tableNumber: {
          type: DataTypes.STRING(10),
+         allowNull: false
       },
       webPage: {
          type: DataTypes.STRING,
