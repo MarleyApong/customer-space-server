@@ -1,6 +1,6 @@
 const { Op } = require('sequelize')
 const { v4: uuid } = require('uuid')
-const { Orders, Users, OrdersProducts, Tables, Status } = require('../models')
+const { Orders, Users, OrdersProducts, Tables, Status, Companies, Notifications } = require('../models')
 const customError = require('../hooks/customError')
 
 const label = "order"
@@ -88,36 +88,160 @@ exports.getOne = async (req, res, next) => {
     }
 }
 
+// GET ORDER BY COMPANY
+exports.getOrderByCompany = async (req, res, next) => {
+    const page = parseInt(req.query.page) || 1
+    const limit = parseInt(req.query.limit) || 10
+    const status = req.query.status
+    const sort = req.query.sort || 'desc'
+    const filter = req.query.filter || 'createdAt'
+    const keyboard = req.query.k
+
+    try {
+        let whereClause = {}
+        if (status) {
+            if (status !== 'actif' && status !== 'inactif') {
+                whereClause.idStatus = status
+            }
+            else {
+                const statusData = await Status.findOne({ where: { name: status } })
+                whereClause.idStatus = statusData.id
+            }
+        }
+
+        if (keyboard) {
+            if (filter !== 'createdAt' && filter !== 'updateAt' && filter !== 'deletedAt') {
+                whereClause = {
+                    ...whereClause,
+                    [filter]: {
+                        [Op.like]: `%${keyboard}%`,
+                    },
+                }
+            }
+            else {
+                whereClause = {
+                    ...whereClause,
+                    [filter]: {
+                        [Op.between]: [new Date(keyboard), new Date(keyboard + " 23:59:59")]
+                    },
+                }
+            }
+        }
+
+        const id = req.params.id
+        const data = await Orders.findAll({
+            where: whereClause,
+            include: [
+                {
+                    model: Tables,
+                    attributes: ['id'],
+                    include: [
+                        {
+                            model: Companies,
+                            attributes: ['id'],
+                            where: {id: id}
+                        }
+                    ]
+                }
+            ],
+            limit: limit,
+            offset: (page - 1) * limit,
+            order: [[filter, sort]],
+        })
+        const totalElements = await Orders.count()
+        if (!data) throw new customError('NotFound', `${label} not found`)
+
+        return res.json({
+            content: {
+                data: data.rows,
+                totalpages: Math.ceil(totalElements / limit),
+                currentElements: data.length,
+                totalElements: totalElements,
+                filter: filter,
+                sort: sort,
+                limit: limit,
+                page: page,
+            }
+        })
+    } catch (err) {
+        next(err)
+    }
+}
+
 // CREATE
 exports.add = async (req, res, next) => {
     try {
-        const { idUser, idProduct, quantity } = req.body
-        if (!idQuestion || !note) throw new customError('MissingData', 'missing data')
+        const { orders, idTable, webPageCompany } = req.body
+
+        // CHECK THAT ORDERS IS A NON-EMPTY ARRAY OF OBJECTS
+        if (!Array.isArray(orders) || orders.length === 0) {
+            throw new customError('MissingData', 'missing data')
+        }
+
+        // CHECK THAT EACH ORDER HAS ALL REQUIRED PROPERTIES
+        const requiredProps = ['idProduct', 'name', 'price', 'quantity', 'total']
+        for (const order of orders) {
+            for (const prop of requiredProps) {
+                if (!order.hasOwnProperty(prop)) {
+                    throw new customError('MissingData', 'missing data')
+                }
+            }
+        }
+
+        // CHECK FOR THE PRESENCE OF THE ID TABLE AND WEBPAGECOMPANY
+        if (!idTable || !webPageCompany) {
+            throw new customError('MissingData', 'missing data')
+        }
+
+        // CHECK TABLE
+        let data = await Tables.findOne({
+            where: { id: idTable },
+            attributes: ['id'],
+            include: [
+                {
+                    model: Companies,
+                    where: { webpage: webPageCompany }
+                }
+            ]
+        })
+        if (!data) throw new customError('NotFound', `${label} not created because the table does not exist`)
+
+        // CHECK ORDER
         const id = uuid()
-        let data = await Orders.findOne({ where: { id: id } })
+
+        data = await Orders.findOne({ where: { id: id } })
         if (data) throw new customError('AlreadyExist', `this ${label} already exists`)
 
-        data = await Users.findOne({ where: { id: idUser } })
-        if (!data) if (data) throw new customError('NotFound', `${label} not created because the user with id: ${idUser} does not exist`)
-
-        await Tables.crea
-
         data = await Orders.create({
-            id: uuid(),
-            idUser: idUser,
-            idTable: '',
-            idProduct: idProduct,
-            quantity: quantity
+            id: id,
+            idTable: idTable
         })
         if (!data) throw new customError('BadRequest', `${label} not created`)
 
-        await OrdersProducts.create({
-            id: uuid(),
-            idOrder: idOrder,
-            idProduct: idProduct
+        const status = await Status.findOne({
+            attributes: ['id'],
+            where: {
+                name: 'actif'
+            }
         })
 
-        await Notification.create({id: uuid(), status: 1})
+        await Notifications.create({
+            id: uuid(),
+            idOrder: id,
+            idStatus: status.id
+        })
+
+        orders.map(async (order) => {
+            await OrdersProducts.create({
+                id: uuid(),
+                idOrder: id,
+                idProduct: order.idProduct,
+                price: order.price,
+                quantity: order.quantity
+            })
+
+            return { ordersProducts: OrdersProducts }
+        })
 
         return res.status(201).json({ message: `${label} created`, content: data })
     } catch (err) {
