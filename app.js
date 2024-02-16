@@ -1,11 +1,15 @@
+
 const express = require('express')
+const http = require('http')
+const socketIo = require('socket.io')
 const cors = require('cors')
 const helmet = require('helmet')
 const morgan = require('morgan')
-
 const sequelize = require('./config/db')
 const seedDB = require('./seeders')
 require('./associations')
+
+//GET ALL ROUTES
 const errorHandler = require('./middlewares/errorHandler')
 const authRouter = require('./routes/auth')
 const usersRouter = require('./routes/users')
@@ -28,7 +32,12 @@ const statusRouter = require('./routes/status')
 const envsRouter = require('./routes/envs')
 const averagesRouter = require('./routes/averages')
 
+// CREATE SERVER
 const app = express()
+const server = http.createServer(app)
+const io = socketIo(server)
+
+// MANAGER REQUEST FOR CROSS ORIGN
 const corsOption = {
     origin: '*',
     allowedHeaders: ['Content-Type', 'Authorization', 'Access-Control-Allow-Headers'],
@@ -44,6 +53,17 @@ app.use(cors(corsOption))
 app.use(express.json())
 app.use(express.urlencoded({ extended: false }))
 app.use(morgan('combined'))
+
+// INITIALIZING THE CONNEXION 'Socket.io' WITH EXPRESS
+io.on('connection', (socket) => {
+    console.log('New client connected');
+})
+
+// MIDDLEWARE TO ADD THE INSTANCE OF SOCKET.IO TO EACH REQUEST
+app.use((req, res, next) => {
+    req.io = io;
+    next();
+})
 
 // STATIC IMAGES FOLDER
 app.use(express.static('public'))
@@ -73,6 +93,11 @@ app.use('/status', statusRouter)
 app.use('/envs', envsRouter)
 app.use('/averages', averagesRouter)
 
+// ROUTE NOT FOUND
+app.use((req, res, next) => {
+    res.status(404).send("Fuck you !")
+})
+
 
 // SYNCHRONIZATION
 const init = async () => {
@@ -87,11 +112,6 @@ const init = async () => {
     }
 }
 init()
-
-// NOT FOUND
-app.use((req, res, next) => {
-    res.status(404).send("Fuck you !")
-})
 
 // MANAGER ERROR
 app.use(errorHandler)

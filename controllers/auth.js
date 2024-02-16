@@ -13,6 +13,9 @@ exports.connect = async (req, res, next) => {
 
         const privateKey = fs.readFileSync(path.join(__dirname, "../privateKey.key"))
         const user = await Users.findOne({
+            attributes: {
+                exclude: ['createdAt', 'updatedAt', 'deletedAt']
+            },
             where: { email: email },
             include: [
                 {
@@ -40,10 +43,31 @@ exports.connect = async (req, res, next) => {
         // GENERED TOKEN
         const token = jwt.sign({}, privateKey, { expiresIn: process.env.JWT_DURING, algorithm: process.env.JWT_ALGORITHM })
 
-        await LogsUsers.create({ id: uuid(), idUser: user.id, login: new Date().toISOString() })
+        await LogsUsers.create({
+            id: uuid(),
+            idUser: user.id,
+            login: new Date().toISOString()
+        })
 
         return res.json({
-            user: user,
+            user: {
+                id: user.id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                Status: {
+                    id: user.Status.id,
+                    name: user.Status.name
+                },
+                Role: {
+                    id: user.Role.id,
+                    name: user.Role.name
+                },
+                Env: {
+                    id: user.Env.id,
+                    name: user.Env.name
+                }
+
+            },
             token: token
         })
     }

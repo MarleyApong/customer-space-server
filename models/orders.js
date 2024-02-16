@@ -15,10 +15,8 @@ module.exports = (sequelize) => {
       allowNull: false
     },
     name: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      autoIncrement: true,
-      autoIncrementStartingValue: 1000
+      type: DataTypes.STRING,
+      allowNull: false
     }
   }, { paranoid: true })
 

@@ -1,6 +1,6 @@
 const { Op } = require('sequelize')
 const { v4: uuid } = require('uuid')
-const { Orders, Users, OrdersProducts, Tables, Status, Companies, Notifications } = require('../models')
+const { Orders, Users, OrdersProducts, Tables, Status, Companies, Notifications, Products } = require('../models')
 const customError = require('../hooks/customError')
 
 const label = "order"
@@ -99,13 +99,14 @@ exports.getOrderByCompany = async (req, res, next) => {
 
     try {
         let whereClause = {}
+        let statusNotification = ''
         if (status) {
             if (status !== 'actif' && status !== 'inactif') {
-                whereClause.idStatus = status
+                statusNotification = status
             }
             else {
                 const statusData = await Status.findOne({ where: { name: status } })
-                whereClause.idStatus = statusData.id
+                statusNotification = statusData.id
             }
         }
 
@@ -134,31 +135,164 @@ exports.getOrderByCompany = async (req, res, next) => {
             include: [
                 {
                     model: Tables,
-                    attributes: ['id'],
                     include: [
                         {
                             model: Companies,
                             attributes: ['id'],
-                            where: {id: id}
+                            where: { id: id }
                         }
                     ]
+                },
+                {
+                    model: OrdersProducts,
+                    attributes: ['id'],
+                    include: [
+                        {
+                            model: Products
+                        }
+                    ]
+                },
+                {
+                    model: Notifications,
+                    where: { idStatus: statusNotification }
                 }
             ],
             limit: limit,
             offset: (page - 1) * limit,
             order: [[filter, sort]],
         })
-        const totalElements = await Orders.count()
+
+        const totalElements = await Orders.findAll({
+            include: [
+                {
+                    model: Tables,
+                    include: [
+                        {
+                            model: Companies,
+                            attributes: ['id'],
+                            where: { id: id }
+                        }
+                    ]
+                },
+                {
+                    model: OrdersProducts,
+                    attributes: ['id'],
+                    include: [
+                        {
+                            model: Products
+                        }
+                    ]
+                },
+                {
+                    model: Notifications,
+                    where: { idStatus: statusNotification }
+                }
+            ]
+        })
+
+        const processed = await await Orders.findAll({
+            include: [
+                {
+                    model: Tables,
+                    include: [
+                        {
+                            model: Companies,
+                            attributes: ['id'],
+                            where: { id: id }
+                        }
+                    ]
+                },
+                {
+                    model: OrdersProducts,
+                    attributes: ['id'],
+                    include: [
+                        {
+                            model: Products
+                        }
+                    ]
+                },
+                {
+                    model: Notifications,
+                    where: {
+                        idStatus: {
+                            [Op.not]: statusNotification
+                        }
+                    }
+                }
+            ]
+        })
         if (!data) throw new customError('NotFound', `${label} not found`)
 
         return res.json({
             content: {
-                data: data.rows,
+                data: data,
                 totalpages: Math.ceil(totalElements / limit),
                 currentElements: data.length,
-                totalElements: totalElements,
+                totalElements: totalElements.length,
+                processed: processed.length,
                 filter: filter,
                 sort: sort,
+                limit: limit,
+                page: page,
+            }
+        })
+    } catch (err) {
+        next(err)
+    }
+}
+
+// GET ORDER BY USER
+exports.getOrderByUser = async (req, res, next) => {
+    const page = parseInt(req.query.page) || 1
+    const limit = parseInt(req.query.limit) || 10
+    const status = req.query.status
+
+    try {
+        let statusNotification = ''
+        if (status) {
+            if (status !== 'actif' && status !== 'inactif') {
+                statusNotification = status
+            }
+            else {
+                const statusData = await Status.findOne({ where: { name: status } })
+                statusNotification = statusData.id
+            }
+        }
+
+        const company = req.params.company
+        if (!company) throw new customError('MissingParams', 'missing parameter')
+
+        const user = req.params.user
+        if (!user) throw new customError('MissingParams', 'missing parameter')
+        const data = await Orders.findAll({
+            where: { idUser: user },
+            include: [
+                {
+                    model: Tables,
+                    include: [
+                        {
+                            model: Companies,
+                            attributes: ['id'],
+                            where: { id: company }
+                        }
+                    ]
+                },
+                {
+                    model: Notifications,
+                    where: { idStatus: statusNotification }
+                }
+            ],
+            limit: limit,
+            offset: (page - 1) * limit
+        })
+        if (!data) throw new customError('NotFound', `${label} not found`)
+
+        return res.json({
+            content: {
+                data: data,
+                totalpages: Math.ceil(data.length / limit),
+                currentElements: data.length,
+                totalElements: data.length,
                 limit: limit,
                 page: page,
             }
@@ -212,9 +346,32 @@ exports.add = async (req, res, next) => {
         data = await Orders.findOne({ where: { id: id } })
         if (data) throw new customError('AlreadyExist', `this ${label} already exists`)
 
+        const today = new Date()
+        const year = today.getFullYear()
+        const month = String(today.getMonth() + 1).padStart(2, '0') // ADD 0 TO LEFT
+        const day = String(today.getDate()).padStart(2, '0') // ADD 0 TO LEFT
+        const formattedDate = `${year + month + day}`
+
+        let newLastName = ''
+        const lastName = await Orders.findOne({
+            order: [['createdAt', 'DESC']]
+        })
+        if (!lastName) {
+            newLastName = `C${formattedDate + 1000}`
+        }
+        else {
+            const currentName = lastName.name
+            const numberStr = currentName.replace(/^C/, '')
+            const number = parseInt(numberStr, 10)
+            const incrementNumber = number + 1
+            newLastName = `C${incrementNumber}`
+        }
+
+
         data = await Orders.create({
             id: id,
-            idTable: idTable
+            idTable: idTable,
+            name: newLastName
         })
         if (!data) throw new customError('BadRequest', `${label} not created`)
 
@@ -224,6 +381,9 @@ exports.add = async (req, res, next) => {
                 name: 'actif'
             }
         })
+
+        // ISSUE A NOTIFICATION 'Socket.io'
+        req.io.emit('newOrder', { message: 'New order added!' })
 
         await Notifications.create({
             id: uuid(),
