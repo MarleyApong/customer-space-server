@@ -245,20 +245,8 @@ exports.getOrderByCompany = async (req, res, next) => {
 exports.getOrderByUser = async (req, res, next) => {
     const page = parseInt(req.query.page) || 1
     const limit = parseInt(req.query.limit) || 10
-    const status = req.query.status
 
     try {
-        let statusNotification = ''
-        if (status) {
-            if (status !== 'actif' && status !== 'inactif') {
-                statusNotification = status
-            }
-            else {
-                const statusData = await Status.findOne({ where: { name: status } })
-                statusNotification = statusData.id
-            }
-        }
-
         const company = req.params.company
         if (!company) throw new customError('MissingParams', 'missing parameter')
 
@@ -276,10 +264,6 @@ exports.getOrderByUser = async (req, res, next) => {
                             where: { id: company }
                         }
                     ]
-                },
-                {
-                    model: Notifications,
-                    where: { idStatus: statusNotification }
                 }
             ],
             limit: limit,
@@ -287,12 +271,39 @@ exports.getOrderByUser = async (req, res, next) => {
         })
         if (!data) throw new customError('NotFound', `${label} not found`)
 
+        // GET DATE NOW
+        const today = new Date()
+        const startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+        const endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59)
+
+        const ordersToday = await Orders.findAll({
+            where: { 
+                idUser: user,
+                createdAt: {
+                    [Op.between]: [startDate, endDate] // BETWEEN MIDNIGHT AND 11:59 p.m. TODAY
+                }
+            },
+            include: [
+                {
+                    model: Tables,
+                    include: [
+                        {
+                            model: Companies,
+                            attributes: ['id'],
+                            where: { id: company }
+                        }
+                    ]
+                }
+            ]
+        })
+
         return res.json({
             content: {
                 data: data,
                 totalpages: Math.ceil(data.length / limit),
                 currentElements: data.length,
                 totalElements: data.length,
+                ordersToday: ordersToday.length,
                 limit: limit,
                 page: page,
             }
