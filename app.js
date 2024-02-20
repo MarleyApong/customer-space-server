@@ -4,7 +4,6 @@ const helmet = require('helmet')
 const morgan = require('morgan')
 const sequelize = require('./config/db')
 const seedDB = require('./seeders')
-const eventEmitter = require('./hooks/eventEmitter')
 require('./associations')
 
 
@@ -30,6 +29,9 @@ const rolesRouter = require('./routes/roles')
 const statusRouter = require('./routes/status')
 const envsRouter = require('./routes/envs')
 const averagesRouter = require('./routes/averages')
+
+//CALL ROUTES FOR SERVER SENT EVENT
+const event = require('./routes/event')
 
 // CREATE SERVER
 const app = express()
@@ -59,26 +61,8 @@ app.use(express.static('public'))
 app.get('/', (req, res) => {
     res.send('Welcome !')
 })
-app.get('/test', (req, res) => {
-    res.writeHead(200, {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive'
-    })
 
-    res.write('event: connected\n')
-    res.write('data: you are now subscribe\n')
-    res.write('id: 1\n\n')
-
-    let counter = 0
-    eventEmitter.on('event', (data) => {
-        res.write('event: nouvelle_commande\n')
-        res.write(`data: ${data}\n`)
-        res.write(`id: ${++counter}\n\n`)
-        // console.log("data", data)
-    })
-})
-
+app.use('/event', event)
 app.use('/auth', authRouter)
 app.use('/users', usersRouter)
 app.use('/organizations', organizationsRouter)

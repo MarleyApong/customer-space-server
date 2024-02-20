@@ -12,6 +12,8 @@ router.get('/companies/:company/users/:user', checkToken, ctrl.getOrderByUser)
 router.get('/companies/:id', checkToken, ctrl.getOrderByCompany)
 router.put('/', ctrl.add)
 router.patch('/:id', checkToken, ctrl.update)
+router.patch('/:id/user', checkToken, ctrl.updateUserIdInOrder)
+router.patch('/:id/notification', checkToken, ctrl.updateIdSatusInNotification)
 router.patch('/:id/restore', checkToken, ctrl.restore)
 router.delete('/:id', checkToken, ctrl.deleteTrash)
 

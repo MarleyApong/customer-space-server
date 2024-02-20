@@ -435,18 +435,7 @@ exports.add = async (req, res, next) => {
             return { ordersProducts: OrdersProducts }
         })
 
-        // eventEmitter.on('event', (data) => {
-        //     console.log("data", data)
-        // })
-
-        const emitValues = {
-            id: data.id,
-            idTable: idTable,
-            name: lastName,
-            total: total
-        }
-
-        eventEmitter.emit('event', JSON.stringify(emitValues))
+        eventEmitter.emit('event', JSON.stringify(data.id))
 
         return res.status(201).json({ message: `${label} created`, content: data })
     } catch (err) {
@@ -468,6 +457,55 @@ exports.update = async (req, res, next) => {
         if (!data) throw new customError('BadRequest', `${label} not modified`)
 
         return res.json({ message: `${label} modified` })
+    } catch (err) {
+        next(err)
+    }
+}
+
+// UPDATE USER ID IN ORDER
+exports.updateUserIdInOrder = async (req, res, next) => {
+    try {
+        const id = req.params.id
+        if (!id) throw new customError('MissingParams', 'missing parameter')
+
+        const { user } = req.body
+        if (!user) throw new customError('MissingData', 'missing data')
+
+        let data = await Orders.findOne({ where: { id: id } })
+        if (!data) throw new customError('NotFound', `${label} does not exist`)
+
+        data = await Users.findOne({ where: { id: user } })
+        if (!data) throw new customError('NotFound', `${label} was not modified because this user ${user} does not exist`)
+
+        data = await Orders.update({ idUser: user }, { where: { id: id } })
+        if (!data) throw new customError('BadRequest', `${label} has not been processed`)
+
+        return res.json({ message: `${label} being processed` })
+    } catch (err) {
+        next(err)
+    }
+}
+
+// UPDATE ID STATUS IN NOTIFICATION
+exports.updateIdSatusInNotification = async (req, res, next) => {
+    try {
+        const id = req.params.id
+        if (!id) throw new customError('MissingParams', 'missing parameter')
+
+        let data = await Orders.findOne({ where: { id: id } })
+        if (!data) throw new customError('NotFound', `${label} does not exist`)
+
+        const status = await Status.findOne({
+            attributes: ['id'],
+            where: {
+                name: 'inactif'
+            }
+        })
+
+        data = await Notifications.update({ idStatus: status.id }, { where: { idOrder: id } })
+        if (!data) throw new customError('BadRequest', `${label} has not been processed`)
+
+        return res.json({ message: `${label} processed` })
     } catch (err) {
         next(err)
     }
