@@ -124,7 +124,8 @@ exports.getProductByUser = async (req, res, next) => {
                         [Op.like]: `%${keyboard}%`
                     }
                 }
-            } else {
+            } 
+            else {
                 whereClause = {
                     ...whereClause,
                     [filter]: {

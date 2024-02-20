@@ -2,6 +2,7 @@ const { Op } = require('sequelize')
 const { v4: uuid } = require('uuid')
 const { Orders, Users, OrdersProducts, Tables, Status, Companies, Notifications, Products } = require('../models')
 const customError = require('../hooks/customError')
+const eventEmitter = require('../hooks/eventEmitter')
 
 const label = "order"
 
@@ -79,7 +80,27 @@ exports.getOne = async (req, res, next) => {
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
-        const data = await Orders.findOne({ where: { id: id } })
+        const data = await Orders.findOne({
+            where: { id: id },
+            include: [
+                {
+                    model: Tables,
+                    attributes: ['id', 'tableNumber']
+                },
+                {
+                    model: OrdersProducts,
+                    include: [
+                        {
+                            model: Products
+                        }
+                    ]
+                },
+                // {
+                //     model: Notifications,
+                //     where: { idStatus: statusNotification }
+                // }
+            ],
+        })
         if (!data) throw new customError('NotFound', `${label} not found`)
 
         return res.json({ content: data })
@@ -130,8 +151,12 @@ exports.getOrderByCompany = async (req, res, next) => {
         }
 
         const id = req.params.id
+        // console.log("id========", id)
         const data = await Orders.findAll({
-            where: whereClause,
+            where: {
+                ...whereClause,
+                idUser: null
+            },
             include: [
                 {
                     model: Tables,
@@ -152,10 +177,10 @@ exports.getOrderByCompany = async (req, res, next) => {
                         }
                     ]
                 },
-                {
-                    model: Notifications,
-                    where: { idStatus: statusNotification }
-                }
+                // {
+                //     model: Notifications,
+                //     where: { idStatus: statusNotification }
+                // }
             ],
             limit: limit,
             offset: (page - 1) * limit,
@@ -163,6 +188,9 @@ exports.getOrderByCompany = async (req, res, next) => {
         })
 
         const totalElements = await Orders.findAll({
+            where: {
+                idUser: null
+            },
             include: [
                 {
                     model: Tables,
@@ -183,14 +211,25 @@ exports.getOrderByCompany = async (req, res, next) => {
                         }
                     ]
                 },
-                {
-                    model: Notifications,
-                    where: { idStatus: statusNotification }
-                }
+                // {
+                //     model: Notifications,
+                //     where: { idStatus: statusNotification }
+                // }
             ]
         })
 
+        const today = new Date()
+        const startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+        const endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
         const processed = await await Orders.findAll({
+            where: {
+                idUser: {
+                    [Op.not]: null
+                },
+                createdAt: {
+                    [Op.between]: [startDate, endDate]
+                }
+            },
             include: [
                 {
                     model: Tables,
@@ -201,23 +240,6 @@ exports.getOrderByCompany = async (req, res, next) => {
                             where: { id: id }
                         }
                     ]
-                },
-                {
-                    model: OrdersProducts,
-                    attributes: ['id'],
-                    include: [
-                        {
-                            model: Products
-                        }
-                    ]
-                },
-                {
-                    model: Notifications,
-                    where: {
-                        idStatus: {
-                            [Op.not]: statusNotification
-                        }
-                    }
                 }
             ]
         })
@@ -271,16 +293,15 @@ exports.getOrderByUser = async (req, res, next) => {
         })
         if (!data) throw new customError('NotFound', `${label} not found`)
 
-        // GET DATE NOW
         const today = new Date()
         const startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-        const endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59)
+        const endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
 
         const ordersToday = await Orders.findAll({
-            where: { 
+            where: {
                 idUser: user,
                 createdAt: {
-                    [Op.between]: [startDate, endDate] // BETWEEN MIDNIGHT AND 11:59 p.m. TODAY
+                    [Op.between]: [startDate, endDate]
                 }
             },
             include: [
@@ -296,6 +317,7 @@ exports.getOrderByUser = async (req, res, next) => {
                 }
             ]
         })
+
 
         return res.json({
             content: {
@@ -316,7 +338,7 @@ exports.getOrderByUser = async (req, res, next) => {
 // CREATE
 exports.add = async (req, res, next) => {
     try {
-        const { orders, idTable, webPageCompany } = req.body
+        const { orders, idTable, webPageCompany, total } = req.body
 
         // CHECK THAT ORDERS IS A NON-EMPTY ARRAY OF OBJECTS
         if (!Array.isArray(orders) || orders.length === 0) {
@@ -382,8 +404,10 @@ exports.add = async (req, res, next) => {
         data = await Orders.create({
             id: id,
             idTable: idTable,
-            name: newLastName
+            name: newLastName,
+            total: total
         })
+
         if (!data) throw new customError('BadRequest', `${label} not created`)
 
         const status = await Status.findOne({
@@ -392,9 +416,6 @@ exports.add = async (req, res, next) => {
                 name: 'actif'
             }
         })
-
-        // ISSUE A NOTIFICATION 'Socket.io'
-        req.io.emit('newOrder', { message: 'New order added!' })
 
         await Notifications.create({
             id: uuid(),
@@ -413,6 +434,19 @@ exports.add = async (req, res, next) => {
 
             return { ordersProducts: OrdersProducts }
         })
+
+        // eventEmitter.on('event', (data) => {
+        //     console.log("data", data)
+        // })
+
+        const emitValues = {
+            id: data.id,
+            idTable: idTable,
+            name: lastName,
+            total: total
+        }
+
+        eventEmitter.emit('event', JSON.stringify(emitValues))
 
         return res.status(201).json({ message: `${label} created`, content: data })
     } catch (err) {

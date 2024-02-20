@@ -172,7 +172,7 @@ exports.getOrganizationCompanyByUser = async (req, res, next) => {
                },
                {
                   model: Companies,
-                  attributes: ['id', 'name', 'picture'],
+                  attributes: ['id', 'name', 'picture','webpage'],
                   include: [
                      {
                         model: Organizations,

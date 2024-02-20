@@ -1,13 +1,12 @@
-
 const express = require('express')
-const http = require('http')
-const socketIo = require('socket.io')
 const cors = require('cors')
 const helmet = require('helmet')
 const morgan = require('morgan')
 const sequelize = require('./config/db')
 const seedDB = require('./seeders')
+const eventEmitter = require('./hooks/eventEmitter')
 require('./associations')
+
 
 //GET ALL ROUTES
 const errorHandler = require('./middlewares/errorHandler')
@@ -34,8 +33,6 @@ const averagesRouter = require('./routes/averages')
 
 // CREATE SERVER
 const app = express()
-const server = http.createServer(app)
-const io = socketIo(server)
 
 // MANAGER REQUEST FOR CROSS ORIGN
 const corsOption = {
@@ -43,27 +40,17 @@ const corsOption = {
     allowedHeaders: ['Content-Type', 'Authorization', 'Access-Control-Allow-Headers'],
 }
 
+app.use(cors(corsOption))
+
 // UPGRADE PROTECTION
 // app.use(helmet({
 //     contentSecutityPolicy: false
 // }))
 
 // CONFIGURATION API && AUTHORIZATION
-app.use(cors(corsOption))
 app.use(express.json())
 app.use(express.urlencoded({ extended: false }))
 app.use(morgan('combined'))
-
-// INITIALIZING THE CONNEXION 'Socket.io' WITH EXPRESS
-io.on('connection', (socket) => {
-    console.log('New client connected');
-})
-
-// MIDDLEWARE TO ADD THE INSTANCE OF SOCKET.IO TO EACH REQUEST
-app.use((req, res, next) => {
-    req.io = io;
-    next();
-})
 
 // STATIC IMAGES FOLDER
 app.use(express.static('public'))
@@ -72,6 +59,26 @@ app.use(express.static('public'))
 app.get('/', (req, res) => {
     res.send('Welcome !')
 })
+app.get('/test', (req, res) => {
+    res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive'
+    })
+
+    res.write('event: connected\n')
+    res.write('data: you are now subscribe\n')
+    res.write('id: 1\n\n')
+
+    let counter = 0
+    eventEmitter.on('event', (data) => {
+        res.write('event: nouvelle_commande\n')
+        res.write(`data: ${data}\n`)
+        res.write(`id: ${++counter}\n\n`)
+        // console.log("data", data)
+    })
+})
+
 app.use('/auth', authRouter)
 app.use('/users', usersRouter)
 app.use('/organizations', organizationsRouter)
@@ -97,7 +104,6 @@ app.use('/averages', averagesRouter)
 app.use((req, res, next) => {
     res.status(404).send("Fuck you !")
 })
-
 
 // SYNCHRONIZATION
 const init = async () => {
