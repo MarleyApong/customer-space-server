@@ -95,10 +95,9 @@ exports.getOne = async (req, res, next) => {
                         }
                     ]
                 },
-                // {
-                //     model: Notifications,
-                //     where: { idStatus: statusNotification }
-                // }
+                {
+                    model: Notifications
+                }
             ],
         })
         if (!data) throw new customError('NotFound', `${label} not found`)
@@ -118,9 +117,16 @@ exports.getOrderByCompany = async (req, res, next) => {
     const filter = req.query.filter || 'createdAt'
     const keyboard = req.query.k
 
+    // GET DATE OF TODAY
+    const today = new Date()
+    const startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+    const endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
+
     try {
         let whereClause = {}
         let statusNotification = ''
+
+        // GET ID STATUS
         if (status) {
             if (status !== 'actif' && status !== 'inactif') {
                 statusNotification = status
@@ -131,8 +137,22 @@ exports.getOrderByCompany = async (req, res, next) => {
             }
         }
 
-        if (keyboard) {
-            if (filter !== 'createdAt' && filter !== 'updateAt' && filter !== 'deletedAt') {
+        // GET ID STATUS WHERE STATUS = actif or inactif
+        const activeStatus = await Status.findOne({ where: { name: 'actif' } })
+        const inactiveStatus = await Status.findOne({ where: { name: 'inactif' } })
+
+        // OPTION FILTER +
+        if (!keyboard) {
+            // GET DATA OF TODAY
+            whereClause = {
+                ...whereClause,
+                createdAt: {
+                    [Op.between]: [startDate, endDate]
+                }
+            }
+        }
+        else {
+            if (filter !== 'createdAt' && filter !== 'updatedAt' && filter !== 'deletedAt') {
                 whereClause = {
                     ...whereClause,
                     [filter]: {
@@ -143,7 +163,7 @@ exports.getOrderByCompany = async (req, res, next) => {
             else {
                 whereClause = {
                     ...whereClause,
-                    [filter]: {
+                    createdAt: {
                         [Op.between]: [new Date(keyboard), new Date(keyboard + " 23:59:59")]
                     },
                 }
@@ -151,84 +171,160 @@ exports.getOrderByCompany = async (req, res, next) => {
         }
 
         const id = req.params.id
-        // console.log("id========", id)
-        const data = await Orders.findAll({
-            where: {
-                ...whereClause,
-                idUser: null
-            },
-            include: [
-                {
-                    model: Tables,
-                    include: [
-                        {
-                            model: Companies,
-                            attributes: ['id'],
-                            where: { id: id }
-                        }
-                    ]
-                },
-                {
-                    model: OrdersProducts,
-                    attributes: ['id'],
-                    include: [
-                        {
-                            model: Products
-                        }
-                    ]
-                },
-                // {
-                //     model: Notifications,
-                //     where: { idStatus: statusNotification }
-                // }
-            ],
-            limit: limit,
-            offset: (page - 1) * limit,
-            order: [[filter, sort]],
-        })
+        let data = ''
+        let totalElements = 0
 
-        const totalElements = await Orders.findAll({
-            where: {
-                idUser: null
-            },
-            include: [
-                {
-                    model: Tables,
-                    include: [
-                        {
-                            model: Companies,
-                            attributes: ['id'],
-                            where: { id: id }
-                        }
-                    ]
+        if (status === '') {
+            // GET DATA IN PROGRESS
+            data = await Orders.findAll({
+                where: {
+                    ...whereClause,
+                    idUser: null
                 },
-                {
-                    model: OrdersProducts,
-                    attributes: ['id'],
-                    include: [
-                        {
-                            model: Products
-                        }
-                    ]
-                },
-                // {
-                //     model: Notifications,
-                //     where: { idStatus: statusNotification }
-                // }
-            ]
-        })
+                include: [
+                    {
+                        model: Tables,
+                        include: [
+                            {
+                                model: Companies,
+                                attributes: ['id'],
+                                where: { id: id }
+                            }
+                        ]
+                    },
+                    {
+                        model: OrdersProducts,
+                        attributes: ['id'],
+                        include: [
+                            {
+                                model: Products
+                            }
+                        ]
+                    },
+                    {
+                        model: Notifications,
+                        where: { idStatus: activeStatus.id }
+                    }
+                ],
+                limit: limit,
+                offset: (page - 1) * limit,
+                order: [[filter, sort]],
+            })
 
-        const today = new Date()
-        const startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-        const endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
-        const processed = await await Orders.findAll({
+            // GET TOTAL OF DATA IN PROGRESS
+            totalElements = await Orders.findAll({
+                where: {
+                    ...whereClause,
+                    idUser: null
+                },
+                include: [
+                    {
+                        model: Tables,
+                        include: [
+                            {
+                                model: Companies,
+                                attributes: ['id'],
+                                where: { id: id }
+                            }
+                        ]
+                    },
+                    {
+                        model: OrdersProducts,
+                        attributes: ['id'],
+                        include: [
+                            {
+                                model: Products
+                            }
+                        ]
+                    },
+                    {
+                        model: Notifications,
+                        where: { idStatus: activeStatus.id }
+                    }
+                ],
+                limit: limit,
+                offset: (page - 1) * limit,
+                order: [[filter, sort]],
+            })
+        } else {
+            data = await Orders.findAll({
+                where: {
+                    ...whereClause,
+                    idUser: {
+                        [Op.not]: null
+                    },
+                },
+                include: [
+                    {
+                        model: Tables,
+                        include: [
+                            {
+                                model: Companies,
+                                attributes: ['id'],
+                                where: { id: id }
+                            }
+                        ]
+                    },
+                    {
+                        model: OrdersProducts,
+                        attributes: ['id'],
+                        include: [
+                            {
+                                model: Products
+                            }
+                        ]
+                    },
+                    {
+                        model: Notifications,
+                        where: { idStatus: statusNotification }
+                    }
+                ],
+                limit: limit,
+                offset: (page - 1) * limit,
+                order: [[filter, sort]],
+            })
+
+            totalElements = await Orders.findAll({
+                where: {
+                    idUser: {
+                        [Op.not]: null
+                    },
+                    ...whereClause
+                },
+                include: [
+                    {
+                        model: Tables,
+                        include: [
+                            {
+                                model: Companies,
+                                attributes: ['id'],
+                                where: { id: id }
+                            }
+                        ]
+                    },
+                    {
+                        model: OrdersProducts,
+                        attributes: ['id'],
+                        include: [
+                            {
+                                model: Products
+                            }
+                        ]
+                    },
+                    {
+                        model: Notifications,
+                        where: { idStatus: statusNotification }
+                    }
+                ]
+            })
+        }
+
+        const processed = await Orders.findAll({
             where: {
                 idUser: {
                     [Op.not]: null
                 },
-                createdAt: {
-                    [Op.between]: [startDate, endDate]
-                }
+                ...whereClause
             },
             include: [
                 {
@@ -240,9 +336,14 @@ exports.getOrderByCompany = async (req, res, next) => {
                             where: { id: id }
                         }
                     ]
+                },
+                {
+                    model: Notifications,
+                    where: { idStatus: inactiveStatus.id }
                 }
             ]
         })
+
         if (!data) throw new customError('NotFound', `${label} not found`)
 
         return res.json({
@@ -263,6 +364,7 @@ exports.getOrderByCompany = async (req, res, next) => {
     }
 }
 
+
 // GET ORDER BY USER
 exports.getOrderByUser = async (req, res, next) => {
     const page = parseInt(req.query.page) || 1
@@ -274,6 +376,9 @@ exports.getOrderByUser = async (req, res, next) => {
 
         const user = req.params.user
         if (!user) throw new customError('MissingParams', 'missing parameter')
+
+        // GET TOTAL DATA BY USER 
+        const inactiveStatus = await Status.findOne({ where: { name: 'inactif' } })
         const data = await Orders.findAll({
             where: { idUser: user },
             include: [
@@ -286,6 +391,10 @@ exports.getOrderByUser = async (req, res, next) => {
                             where: { id: company }
                         }
                     ]
+                },
+                {
+                    model: Notifications,
+                    where: { idStatus: inactiveStatus.id }
                 }
             ],
             limit: limit,
@@ -293,10 +402,12 @@ exports.getOrderByUser = async (req, res, next) => {
         })
         if (!data) throw new customError('NotFound', `${label} not found`)
 
+        // GET DATE OF TODAY
         const today = new Date()
         const startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate())
         const endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
 
+        // GET TOTAL DATA OF TODAY BY USER 
         const ordersToday = await Orders.findAll({
             where: {
                 idUser: user,
@@ -314,10 +425,13 @@ exports.getOrderByUser = async (req, res, next) => {
                             where: { id: company }
                         }
                     ]
+                },
+                {
+                    model: Notifications,
+                    where: { idStatus: inactiveStatus.id }
                 }
             ]
         })
-
 
         return res.json({
             content: {
@@ -385,6 +499,7 @@ exports.add = async (req, res, next) => {
         const day = String(today.getDate()).padStart(2, '0') // ADD 0 TO LEFT
         const formattedDate = `${year + month + day}`
 
+        // GET LAST VALUE OF BD
         let newLastName = ''
         const lastName = await Orders.findOne({
             order: [['createdAt', 'DESC']]
@@ -400,7 +515,7 @@ exports.add = async (req, res, next) => {
             newLastName = `C${incrementNumber}`
         }
 
-
+        // ADD ORDER
         data = await Orders.create({
             id: id,
             idTable: idTable,
@@ -417,12 +532,14 @@ exports.add = async (req, res, next) => {
             }
         })
 
+        // ADD NOTIFICATION OF THE ORDER
         await Notifications.create({
             id: uuid(),
             idOrder: id,
             idStatus: status.id
         })
 
+        // ADD PRODUCTS OF THE ORDER
         orders.map(async (order) => {
             await OrdersProducts.create({
                 id: uuid(),
@@ -435,6 +552,7 @@ exports.add = async (req, res, next) => {
             return { ordersProducts: OrdersProducts }
         })
 
+        // EMIT SIGNAL TO FRONT OF ORDER
         eventEmitter.emit('event', JSON.stringify(data.id))
 
         return res.status(201).json({ message: `${label} created`, content: data })
