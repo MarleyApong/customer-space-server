@@ -39,6 +39,10 @@ module.exports = (err, req, res, next) => {
       message = err.message
       status = 400
    }
+   else if (err.name === 'AddSurveyError') {
+      message = err.message
+      status = 400
+   }
    else if (err.name === 'AddLimitReached') {
       message = err.message
       status = 401

@@ -13,6 +13,7 @@ router.get('/:id', checkToken, ctrl.getOne)
 router.put('/', checkToken, ctrl.upload, ctrl.add)
 router.patch('/:id', checkToken, ctrl.update)
 router.patch('/:id/profile-image', checkToken, ctrl.upload, ctrl.changeProfil)
+router.patch('/:id/status', checkToken, ctrl.changeStatus)
 router.patch('/:id/restore', checkToken, ctrl.restore)
 router.delete('/:id', checkToken, ctrl.deleteTrash)
 

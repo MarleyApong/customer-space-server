@@ -2,7 +2,7 @@ const fs = require('fs')
 const multer = require('multer')
 const { Op } = require('sequelize')
 const { v4: uuid } = require('uuid')
-const { Products, Companies, Organizations, UsersCompanies } = require('../models')
+const { Products, Companies, Organizations, UsersCompanies, Status } = require('../models')
 const customError = require('../hooks/customError')
 
 const label = "product"
@@ -14,10 +14,22 @@ exports.getAll = async (req, res, next) => {
     const limit = parseInt(req.query.limit) || 10
     const sort = req.query.sort || 'desc'
     const filter = req.query.filter || 'createdAt'
+    const status = req.query.status
     const keyboard = req.query.k
 
     try {
         let whereClause = {}
+
+        if (status) {
+            if (status !== 'actif' && status !== 'inactif') {
+                whereClause.idStatus = status
+            }
+            else {
+                const statusData = await Status.findOne({ where: { name: status } })
+                whereClause.idStatus = statusData.id
+            }
+        }
+        
         if (keyboard) {
             if (filter !== 'createdAt' && filter !== 'updateAt' && filter !== 'deletedAt') {
                 whereClause = {
@@ -40,6 +52,10 @@ exports.getAll = async (req, res, next) => {
         const data = await Products.findAll({
             where: whereClause,
             include: [
+                {
+                    model: Status,
+                    attributes: ['id', 'name']
+                },
                 {
                     model: Companies,
                     attributes: ['id', 'name'],
@@ -86,6 +102,10 @@ exports.getOne = async (req, res, next) => {
             where: { id: id },
             include: [
                 {
+                    model: Status,
+                    attributes: ['id', 'name']
+                },
+                {
                     model: Companies,
                     attributes: ['id', 'name'],
                     include: [
@@ -111,10 +131,20 @@ exports.getProductByUser = async (req, res, next) => {
     const limit = parseInt(req.query.limit) || 10
     const sort = req.query.sort || 'desc'
     const filter = req.query.filter || 'createdAt'
+    const status = req.query.status
     const keyboard = req.query.k
 
     try {
         let whereClause = {}
+        if (status) {
+            if (status !== 'actif' && status !== 'inactif') {
+                whereClause.idStatus = status
+            }
+            else {
+                const statusData = await Status.findOne({ where: { name: status } })
+                whereClause.idStatus = statusData.id
+            }
+        }
 
         if (keyboard) {
             if (filter !== 'createdAt' && filter !== 'updateAt' && filter !== 'deletedAt') {
@@ -124,7 +154,7 @@ exports.getProductByUser = async (req, res, next) => {
                         [Op.like]: `%${keyboard}%`
                     }
                 }
-            } 
+            }
             else {
                 whereClause = {
                     ...whereClause,
@@ -140,6 +170,10 @@ exports.getProductByUser = async (req, res, next) => {
 
         const data = await Products.findAll({
             include: [
+                {
+                    model: Status,
+                    attributes: ['id', 'name']
+                },
                 {
                     model: Companies,
                     include: [
@@ -196,10 +230,21 @@ exports.getProductByCompany = async (req, res, next) => {
     const limit = parseInt(req.query.limit) || 10
     const sort = req.query.sort || 'asc'
     const filter = req.query.filter || 'name'
+    const status = req.query.status
     const keyboard = req.query.k
+    
 
     try {
         let whereClause = {}
+        if (status) {
+            if (status !== 'actif' && status !== 'inactif') {
+                whereClause.idStatus = status
+            }
+            else {
+                const statusData = await Status.findOne({ where: { name: status } })
+                whereClause.idStatus = statusData.id
+            }
+        }
 
         if (keyboard) {
             if (filter !== 'createdAt' && filter !== 'updateAt' && filter !== 'deletedAt') {
@@ -219,11 +264,17 @@ exports.getProductByCompany = async (req, res, next) => {
             }
         }
 
+        console.log("whereClause", whereClause)
+
         const webPage = req.params.id
         if (!webPage) throw new customError('MissingParams', 'missing parameter')
 
         const data = await Products.findAll({
             include: [
+                {
+                    model: Status,
+                    attributes: ['id', 'name']
+                },
                 {
                     model: Companies,
                     where: { webPage: webPage }
@@ -267,13 +318,14 @@ exports.getProductByCompany = async (req, res, next) => {
 // CREATE
 exports.add = async (req, res, next) => {
     try {
-        const { idCompany, name, price, category } = req.body
-        if (!name || !price) throw new customError('MissingData', 'missing data')
+        const { idCompany, idStatus, name, price, category } = req.body
+        if (!idCompany || !idStatus || !name || !price) throw new customError('MissingData', 'missing data')
 
         const id = uuid()
         let data = await Products.findOne({ where: { id: id } })
         if (data) throw new customError('AlreadyExist', `this ${label} already exists`)
 
+        // CHECK PRODUCT
         data = await Products.findOne({
             where: {
                 [Op.and]: [
@@ -294,9 +346,11 @@ exports.add = async (req, res, next) => {
         // HERE, WE DELETE THE WORD 'PUBLIC' IN THE PATH
         const pathWithoutPublic = picturePath.substring(6)
 
+        // CREATE PRODUCT
         data = await Products.create({
             id: id,
             idCompany: idCompany,
+            idStatus: idStatus,
             name: name,
             price: price,
             category: category,
@@ -370,6 +424,32 @@ exports.changeProfil = async (req, res, next) => {
             if (!data) throw new customError('BadRequest', `${label} not modified`)
             return res.json({ message: 'picture updated' })
         }
+    } catch (err) {
+        next(err)
+    }
+}
+
+// PATCH STATUS
+exports.changeStatus = async (req, res, next) => {
+    try {
+        const id = req.params.id
+        if (!id) throw new customError('MissingParams', 'missing parameter')
+
+        let data = await Products.findOne({
+            where: { id: id },
+            include: [
+                { model: Status }
+            ]
+        })
+
+        let status = 'actif'
+        if (data.Status.name === 'actif') status = 'inactif'
+        data = await Status.findOne({ where: { name: status } })
+
+        data = await Products.update({ idStatus: data.id }, { where: { id: id } })
+        if (!data) throw new customError('BadRequest', `${label} not modified`)
+
+        return res.json({ message: `${label} ${status === 'actif' ? 'active' : 'inactive'}` })
     } catch (err) {
         next(err)
     }

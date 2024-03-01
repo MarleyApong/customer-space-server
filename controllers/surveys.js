@@ -282,6 +282,12 @@ exports.add = async (req, res, next) => {
         data = await Companies.findOne({ where: { id: idCompany } })
         if (!data) if (data) throw new customError('NotFound', `${label} not created because the company with id: ${idUser} does not exist`)
 
+        // COUNT SURVEY
+        const countSurvey = await Surveys.count({ where: { idCompany: idCompany } })
+
+        if(countSurvey >= 1 ) {
+            throw new customError('AddSurveyError', `the limit for surveys is set at 2`)
+        }
         data = await Surveys.create({
             id: id,
             idCompany: idCompany,

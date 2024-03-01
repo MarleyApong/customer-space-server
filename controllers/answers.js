@@ -17,6 +17,8 @@ exports.getAll = async (req, res, next) => {
 
     try {
         let whereClause = {}
+
+        // GET ID OF STATUS
         if (status) {
             if (status !== 'actif' && status !== 'inactif') {
                 whereClause.idStatus = status
@@ -27,6 +29,7 @@ exports.getAll = async (req, res, next) => {
             }
         }
 
+        // FILTER OPTION
         if (keyboard) {
             if (filter !== 'createdAt' && filter !== 'updateAt' && filter !== 'deletedAt') {
                 whereClause = {
@@ -46,6 +49,7 @@ exports.getAll = async (req, res, next) => {
             }
         }
 
+        // GET ALL ANSWERS
         const data = await Answers.findAll({
             where: whereClause,
             limit: limit,
@@ -94,10 +98,12 @@ exports.add = async (req, res, next) => {
         const responses = req.body
         const idCustomer = responses.length > 0 ? responses[0].idCustomer : null
 
+        // CHECK ARRAY RESPONSES
         if (!responses || !Array.isArray(responses) || responses.length === 0) {
             throw new customError('MissingData', 'missing or invalid data')
         }
 
+        // FIRST, CREATE CUSTOMER
         await Customers.create({ id: idCustomer })
 
         const answersData = await Promise.all(responses.map(async (response) => {
@@ -108,14 +114,16 @@ exports.add = async (req, res, next) => {
 
             const id = uuid()
             if (await Answers.findOne({ where: { id: id } })) {
-                throw new customError('AlreadyExist', `this answer already exists`)
+                throw new customError('AlreadyExist', `this ${label} already exists`)
             }
 
+            // CHECK QUESTION AFTER QUESTION
             const questionData = await Questions.findOne({ where: { id: idQuestion } })
             if (!questionData) {
                 throw new customError('NotFound', `${label} not created because the question with id: ${idQuestion} does not exist`)
             }
 
+            // SECOND, CREATE ANSWERS
             const createdAnswer = await Answers.create({
                 id: id,
                 idQuestion: idQuestion,
@@ -127,6 +135,7 @@ exports.add = async (req, res, next) => {
                 throw new customError('BadRequest', `${label} not created`)
             }
 
+            // THIRD, FOREIGN KEY
             await QuestionsAnswers.create({ id: uuid(), idQuestion: idQuestion, idAnswer: id })
             await AnswersCustomers.create({ id: uuid(), idAnswer: id, idCustomer: idCustomer })
 
@@ -139,7 +148,7 @@ exports.add = async (req, res, next) => {
     }
 }
 
-// GET ANSWERS By ORGANIZATION
+// GET ANSWERS BY ORGANIZATION
 exports.getAnswersByOrganization = async (req, res, next) => {
     try {
         const id = req.params.id

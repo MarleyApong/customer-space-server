@@ -66,7 +66,6 @@ exports.connect = async (req, res, next) => {
                     id: user.Env.id,
                     name: user.Env.name
                 }
-
             },
             token: token
         })

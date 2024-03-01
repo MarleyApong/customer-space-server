@@ -74,6 +74,10 @@ Tables.belongsTo(Companies, { foreignKey: 'idCompany' })
 Companies.hasMany(Products, { foreignKey: 'idCompany' })
 Products.belongsTo(Companies, { foreignKey: 'idCompany' })
 
+// STATUS -> PRODUCTS
+Status.hasMany(Products, { foreignKey: 'idStatus' })
+Products.belongsTo(Status, { foreignKey: 'idStatus' })
+
 // SURVEYS -> QUESTIONS
 Surveys.hasMany(Questions, { foreignKey: 'idSurvey' })
 Questions.belongsTo(Surveys, { foreignKey: 'idSurvey' })

@@ -217,12 +217,12 @@ exports.add = async (req, res, next) => {
             include: [
                 {
                     model: Organizations,
-                    attributes: ['name']
+                    attributes: ['id', 'name']
                 }
             ]
         })
 
-        const organization = data.Organization.name
+        const organization = data.Organization.id
         const company = data.webpage
         const webPage = `${organization}/${company}?fkpngt44tdot=${id}`
 
