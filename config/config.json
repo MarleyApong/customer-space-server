@@ -15,10 +15,10 @@
     "dialect": "mysql"
   },
   "production": {
-    "username": "customer",
-    "password": "Wx6a?q044",
+    "username": "user-customer",
+    "password": "5Jwx2#s41",
     "database": "customer_space",
-    "host": "127.0.0.1",
+    "host": "localhost:3306",
     "dialect": "mysql"
   }
 }

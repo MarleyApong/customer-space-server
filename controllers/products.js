@@ -20,6 +20,7 @@ exports.getAll = async (req, res, next) => {
     try {
         let whereClause = {}
 
+        // GET ID OF STATUS
         if (status) {
             if (status !== 'actif' && status !== 'inactif') {
                 whereClause.idStatus = status
@@ -29,7 +30,8 @@ exports.getAll = async (req, res, next) => {
                 whereClause.idStatus = statusData.id
             }
         }
-        
+
+        // OPTION FILTER
         if (keyboard) {
             if (filter !== 'createdAt' && filter !== 'updateAt' && filter !== 'deletedAt') {
                 whereClause = {
@@ -71,8 +73,9 @@ exports.getAll = async (req, res, next) => {
             offset: (page - 1) * limit,
             order: [[filter, sort]],
         })
+
         const totalElements = await Products.count()
-        if (!data) throw new customError('NotFound', `${label} not found`)
+        if (!data) throw new customError('ProductsNotFound', `${label} not found`)
 
         return res.json({
             content: {
@@ -86,7 +89,8 @@ exports.getAll = async (req, res, next) => {
                 page: page,
             }
         })
-    } catch (err) {
+    }
+    catch (err) {
         next(err)
     }
 
@@ -95,6 +99,7 @@ exports.getAll = async (req, res, next) => {
 // GET ONE
 exports.getOne = async (req, res, next) => {
     try {
+        // GET ID OF PRODUCT
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
@@ -117,10 +122,11 @@ exports.getOne = async (req, res, next) => {
                 }
             ]
         })
-        if (!data) throw new customError('NotFound', `${label} not found`)
+        if (!data) throw new customError('ProductNotFound', `${label} not found`)
 
         return res.json({ content: data })
-    } catch (err) {
+    }
+    catch (err) {
         next(err)
     }
 }
@@ -136,6 +142,8 @@ exports.getProductByUser = async (req, res, next) => {
 
     try {
         let whereClause = {}
+
+        // GET ID OF STATUS
         if (status) {
             if (status !== 'actif' && status !== 'inactif') {
                 whereClause.idStatus = status
@@ -146,6 +154,7 @@ exports.getProductByUser = async (req, res, next) => {
             }
         }
 
+        // OPTION FILTER
         if (keyboard) {
             if (filter !== 'createdAt' && filter !== 'updateAt' && filter !== 'deletedAt') {
                 whereClause = {
@@ -165,6 +174,7 @@ exports.getProductByUser = async (req, res, next) => {
             }
         }
 
+        // GET ID OF USER
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
@@ -219,7 +229,8 @@ exports.getProductByUser = async (req, res, next) => {
                 page: page
             }
         })
-    } catch (err) {
+    }
+    catch (err) {
         next(err)
     }
 }
@@ -232,10 +243,12 @@ exports.getProductByCompany = async (req, res, next) => {
     const filter = req.query.filter || 'name'
     const status = req.query.status
     const keyboard = req.query.k
-    
+
 
     try {
         let whereClause = {}
+
+        // GET ID OF STATUS
         if (status) {
             if (status !== 'actif' && status !== 'inactif') {
                 whereClause.idStatus = status
@@ -246,6 +259,7 @@ exports.getProductByCompany = async (req, res, next) => {
             }
         }
 
+        // OPTION FILTER
         if (keyboard) {
             if (filter !== 'createdAt' && filter !== 'updateAt' && filter !== 'deletedAt') {
                 whereClause = {
@@ -264,11 +278,11 @@ exports.getProductByCompany = async (req, res, next) => {
             }
         }
 
-        console.log("whereClause", whereClause)
-
+        // GET WEBPAGE OF COMPANY
         const webPage = req.params.id
         if (!webPage) throw new customError('MissingParams', 'missing parameter')
 
+        // GET ALL PRODUCT WITH THIS WEBPAGE
         const data = await Products.findAll({
             include: [
                 {
@@ -310,7 +324,8 @@ exports.getProductByCompany = async (req, res, next) => {
                 page: page
             }
         })
-    } catch (err) {
+    }
+    catch (err) {
         next(err)
     }
 }
@@ -318,23 +333,26 @@ exports.getProductByCompany = async (req, res, next) => {
 // CREATE
 exports.add = async (req, res, next) => {
     try {
+        // GET DATA FOR ADD PRODCUT
         const { idCompany, idStatus, name, price, category } = req.body
         if (!idCompany || !idStatus || !name || !price) throw new customError('MissingData', 'missing data')
 
+        // GET NEW ID OF PRODUCT
         const id = uuid()
+
+        // CHECK THIS DATA
         let data = await Products.findOne({ where: { id: id } })
-        if (data) throw new customError('AlreadyExist', `this ${label} already exists`)
+        if (data) throw new customError('ProductAlreadyExist', `this ${label} already exists`)
 
         // CHECK PRODUCT
         data = await Products.findOne({
             where: {
-                [Op.and]: [
-                    { name: name },
-                ]
+                id: id,
+                name: name,
             }
         })
         if (data) {
-            throw new customError('AlreadyExist', `this ${label} already exists`)
+            throw new customError('ProductAlreadyExist', `this ${label} already exists`)
         }
 
         let picturePath = '' // INITIALIZATION OF IMAGE PATH
@@ -358,7 +376,8 @@ exports.add = async (req, res, next) => {
         })
 
         return res.status(201).json({ message: `${label} created`, content: data })
-    } catch (err) {
+    }
+    catch (err) {
         next(err)
     }
 }
@@ -366,12 +385,16 @@ exports.add = async (req, res, next) => {
 // PATCH
 exports.update = async (req, res, next) => {
     try {
+        // GET ID OF PRODUCT
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
+        // GET NEW DATA
         const { name, price, category, picture } = req.body
+
+        // CHECK THIS PRODUCT
         let data = await Products.findOne({ where: { id: id } })
-        if (!data) throw new customError('NotFound', `${label} not exist`)
+        if (!data) throw new customError('ProductNotFound', `${label} not exist`)
 
         const updatedFields = {
             name: name,
@@ -393,10 +416,11 @@ exports.update = async (req, res, next) => {
         }
 
         data = await Products.update(updatedFields, { where: { id: id } })
-        if (!data) throw new customError('BadRequest', `${label} not modified`)
+        if (!data) throw new customError('ProductUpdateError', `${label} not modified`)
 
         return res.json({ message: `${label} modified` })
-    } catch (err) {
+    }
+    catch (err) {
         next(err)
     }
 }
@@ -404,11 +428,13 @@ exports.update = async (req, res, next) => {
 // PATCH PICTURE
 exports.changeProfil = async (req, res, next) => {
     try {
+        // GET ID OF PRODUCT
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
+        // CHECK THIS PRODUCT
         let data = await Products.findOne({ where: { id: id } })
-        if (!data) throw new customError('NotFound', `${label} not exist`)
+        if (!data) throw new customError('ProductNotFound', `${label} not exist`)
 
         if (req.file) {
             let data = await Products.findOne({ where: { id: id } })
@@ -421,10 +447,11 @@ exports.changeProfil = async (req, res, next) => {
             const pathWithoutPublic = req.file.path.substring(6)
 
             data = await Products.update({ picture: pathWithoutPublic }, { where: { id: id } })
-            if (!data) throw new customError('BadRequest', `${label} not modified`)
+            if (!data) throw new customError('PictureProductUpdateError', `${label} not modified`)
             return res.json({ message: 'picture updated' })
         }
-    } catch (err) {
+    }
+    catch (err) {
         next(err)
     }
 }
@@ -432,25 +459,29 @@ exports.changeProfil = async (req, res, next) => {
 // PATCH STATUS
 exports.changeStatus = async (req, res, next) => {
     try {
+        // GET ID OF PRODUCT
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
+        // CHECK THIS PRODUCT
         let data = await Products.findOne({
             where: { id: id },
             include: [
                 { model: Status }
             ]
         })
+        if (!data) throw new customError('ProductNotFound', `${label} not exist`)
 
         let status = 'actif'
         if (data.Status.name === 'actif') status = 'inactif'
         data = await Status.findOne({ where: { name: status } })
 
         data = await Products.update({ idStatus: data.id }, { where: { id: id } })
-        if (!data) throw new customError('BadRequest', `${label} not modified`)
+        if (!data) throw new customError('StatusProductUpdateError', `${label} not modified`)
 
         return res.json({ message: `${label} ${status === 'actif' ? 'active' : 'inactive'}` })
-    } catch (err) {
+    }
+    catch (err) {
         next(err)
     }
 }
@@ -458,17 +489,20 @@ exports.changeStatus = async (req, res, next) => {
 // EMPTY TRASH
 exports.delete = async (req, res, next) => {
     try {
+        // GET ID OF PRODUCT
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
+        // CHECK THIS PRODUCT
         let data = await Products.findOne({ where: { id: id } })
-        if (!data) throw new customError('NotFound', `${label} not exist`)
+        if (!data) throw new customError('ProductNotFound', `${label} not exist`)
 
         data = await Products.destroy({ where: { id: id }, force: true })
-        if (!data) throw new customError('AlreadyExist', `${label} already deleted`)
+        if (!data) throw new customError('ProductAlreadyDeleted', `${label} already deleted`)
 
         return res.json({ message: `${label} deleted` })
-    } catch (err) {
+    } 
+    catch (err) {
         next(err)
     }
 }
@@ -476,17 +510,20 @@ exports.delete = async (req, res, next) => {
 // SAVE TRASH
 exports.deleteTrash = async (req, res, next) => {
     try {
+        // GET ID OF PRODUCT
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
+        // CHECK THIS PRODUCT
         let data = await Products.findOne({ where: { id: id } })
-        if (!data) throw new customError('NotFound', `${label} not exist`)
+        if (!data) throw new customError('ProductNotFound', `${label} not exist`)
 
-        data = await Products.destroy({ where: { id: id } })
-        if (!data) throw new customError('AlreadyExist', `${label} already deleted`)
+        data = await Products.destroy({ where: { id: id }, force: true })
+        if (!data) throw new customError('ProductAlreadyDeleted', `${label} already deleted`)
 
         return res.json({ message: `${label} deleted` })
-    } catch (err) {
+    } 
+    catch (err) {
         next(err)
     }
 }
@@ -494,14 +531,17 @@ exports.deleteTrash = async (req, res, next) => {
 // UNTRASH
 exports.restore = async (req, res, next) => {
     try {
+        // GET ID OF PRODUCT
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
+        // CHECK THIS PRODUCT
         let data = await Products.restore({ where: { id: id } })
-        if (!data) throw new customError('AlreadyExist', `${label} already restored or does not exist`)
+        if (!data) throw new customError('ProductAlreadyRestored', `${label} already restored or does not exist`)
 
         return res.json({ message: `${label} restored` })
-    } catch (err) {
+    } 
+    catch (err) {
         next(err)
     }
 }

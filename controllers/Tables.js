@@ -17,6 +17,8 @@ exports.getAll = async (req, res, next) => {
 
     try {
         let whereClause = {}
+
+        // OPTION FILTER
         if (keyboard) {
             if (filter !== 'createdAt' && filter !== 'updateAt' && filter !== 'deletedAt') {
                 whereClause = {
@@ -55,7 +57,7 @@ exports.getAll = async (req, res, next) => {
             order: [[filter, sort]],
         })
         const totalElements = await Tables.count()
-        if (!data) throw new customError('NotFound', `${label} not found`)
+        if (!data) throw new customError('TablesNotFound', `${label} not found`)
 
         return res.json({
             content: {
@@ -69,7 +71,8 @@ exports.getAll = async (req, res, next) => {
                 page: page,
             }
         })
-    } catch (err) {
+    }
+    catch (err) {
         next(err)
     }
 
@@ -78,6 +81,7 @@ exports.getAll = async (req, res, next) => {
 // GET ONE
 exports.getOne = async (req, res, next) => {
     try {
+        // GET ID OF TABLE
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
@@ -96,10 +100,11 @@ exports.getOne = async (req, res, next) => {
                 }
             ]
         })
-        if (!data) throw new customError('NotFound', `${label} not found`)
+        if (!data) throw new customError('TableNotFound', `${label} not found`)
 
         return res.json({ content: data })
-    } catch (err) {
+    }
+    catch (err) {
         next(err)
     }
 }
@@ -115,6 +120,7 @@ exports.getTablesByUser = async (req, res, next) => {
     try {
         let whereClause = {}
 
+        // FILTER OPTION
         if (keyboard) {
             if (filter !== 'createdAt' && filter !== 'updateAt' && filter !== 'deletedAt') {
                 whereClause = {
@@ -133,6 +139,7 @@ exports.getTablesByUser = async (req, res, next) => {
             }
         }
 
+        // GET ID OF USER
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
@@ -154,6 +161,7 @@ exports.getTablesByUser = async (req, res, next) => {
             limit: limit,
             order: [[filter, sort]],
         })
+        if (!data) throw new customError('TableNotFound', `${label} not found`)
 
         const totalCount = await Tables.count({
             include: [
@@ -183,7 +191,8 @@ exports.getTablesByUser = async (req, res, next) => {
                 page: page
             }
         })
-    } catch (err) {
+    }
+    catch (err) {
         next(err)
     }
 }
@@ -191,9 +200,11 @@ exports.getTablesByUser = async (req, res, next) => {
 // CREATE
 exports.add = async (req, res, next) => {
     try {
+        // GET DATA FOR ADD TABLE
         const { idCompany, tableNumber } = req.body
         if (!idCompany || !tableNumber) throw new customError('MissingData', 'missing data')
 
+        // GET NEW ID FOR TABLE
         const id = uuid()
         let data = await Tables.findOne({
             include: [
@@ -205,15 +216,15 @@ exports.add = async (req, res, next) => {
                     }
                 }
             ],
-            where: { 
-                tableNumber: tableNumber 
-            } 
+            where: {
+                tableNumber: tableNumber
+            }
         })
-        if (data) throw new customError('AlreadyExist', `this ${label} already exists`)
+        if (data) throw new customError('TableAlreadyExist', `this ${label} already exists`)
 
         data = await Companies.findOne({
             attributes: ['id', 'name', 'webpage'],
-            where: {id: idCompany},
+            where: { id: idCompany },
             include: [
                 {
                     model: Organizations,
@@ -235,7 +246,8 @@ exports.add = async (req, res, next) => {
         })
 
         return res.status(201).json({ message: `${label} created`, content: data })
-    } catch (err) {
+    }
+    catch (err) {
         next(err)
     }
 }
@@ -243,9 +255,11 @@ exports.add = async (req, res, next) => {
 // PATCH
 exports.update = async (req, res, next) => {
     try {
+        // GET ID OF TABLE
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
+        // GET NEW DATA
         const { idCompany, tableNumber } = req.body
         let data = await Tables.findOne({
             include: [
@@ -257,17 +271,18 @@ exports.update = async (req, res, next) => {
                     }
                 }
             ],
-            where: { 
-                tableNumber: tableNumber 
-            } 
+            where: {
+                tableNumber: tableNumber
+            }
         })
-        if (data) throw new customError('AlreadyExist', `this ${label} already exists`)
+        if (data) throw new customError('TableAlreadyExist', `this ${label} already exists`)
 
         data = await Tables.update({ tableNumber: tableNumber }, { where: { id: id } })
-        if (!data) throw new customError('BadRequest', `${label} not modified`)
+        if (!data) throw new customError('TableUpdateError', `${label} not modified`)
 
         return res.json({ message: `${label} modified` })
-    } catch (err) {
+    }
+    catch (err) {
         next(err)
     }
 }
@@ -275,17 +290,20 @@ exports.update = async (req, res, next) => {
 // EMPTY TRASH
 exports.delete = async (req, res, next) => {
     try {
+        // GET ID OF TABLE
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
+        // CHECK THIS TABLE
         let data = await Tables.findOne({ where: { id: id } })
-        if (!data) throw new customError('NotFound', `${label} not exist`)
+        if (!data) throw new customError('TableNotFound', `${label} not exist`)
 
         data = await Tables.destroy({ where: { id: id }, force: true })
-        if (!data) throw new customError('AlreadyExist', `${label} already deleted`)
+        if (!data) throw new customError('TableAlreadyDeleted', `${label} already deleted`)
 
         return res.json({ message: `${label} deleted` })
-    } catch (err) {
+    }
+    catch (err) {
         next(err)
     }
 }
@@ -293,17 +311,20 @@ exports.delete = async (req, res, next) => {
 // SAVE TRASH
 exports.deleteTrash = async (req, res, next) => {
     try {
+        // GET ID OF TABLE
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
+        // CHECK THIS TABLE
         let data = await Tables.findOne({ where: { id: id } })
-        if (!data) throw new customError('NotFound', `${label} not exist`)
+        if (!data) throw new customError('TableNotFound', `${label} not exist`)
 
         data = await Tables.destroy({ where: { id: id } })
-        if (!data) throw new customError('AlreadyExist', `${label} already deleted`)
+        if (!data) throw new customError('TableAlreadyDeleted', `${label} already deleted`)
 
         return res.json({ message: `${label} deleted` })
-    } catch (err) {
+    }
+    catch (err) {
         next(err)
     }
 }
@@ -311,14 +332,17 @@ exports.deleteTrash = async (req, res, next) => {
 // UNTRASH
 exports.restore = async (req, res, next) => {
     try {
+        // GET ID OF TABLE
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
+        // CHECK THIS TABLE
         let data = await Tables.restore({ where: { id: id } })
-        if (!data) throw new customError('AlreadyExist', `${label} already restored or does not exist`)
+        if (!data) throw new customError('TableAlreadyRestored', `${label} already restored or does not exist`)
 
         return res.json({ message: `${label} restored` })
-    } catch (err) {
+    } 
+    catch (err) {
         next(err)
     }
 }

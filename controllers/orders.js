@@ -88,6 +88,10 @@ exports.getOne = async (req, res, next) => {
                     attributes: ['id', 'tableNumber']
                 },
                 {
+                    model: Status,
+                    attributes: ['id', 'name']
+                },
+                {
                     model: OrdersProducts,
                     include: [
                         {
@@ -124,22 +128,11 @@ exports.getOrderByCompany = async (req, res, next) => {
 
     try {
         let whereClause = {}
-        let statusNotification = ''
-
-        // GET ID STATUS
-        if (status) {
-            if (status !== 'actif' && status !== 'inactif') {
-                statusNotification = status
-            }
-            else {
-                const statusData = await Status.findOne({ where: { name: status } })
-                statusNotification = statusData.id
-            }
+        let idStatus = ''
+        if (status === 'actif' || status === 'inactif') {
+            const statusData = await Status.findOne({ where: { name: status } })
+            idStatus = statusData.id
         }
-
-        // GET ID STATUS WHERE STATUS = actif or inactif
-        const activeStatus = await Status.findOne({ where: { name: 'actif' } })
-        const inactiveStatus = await Status.findOne({ where: { name: 'inactif' } })
 
         // OPTION FILTER +
         if (!keyboard) {
@@ -179,9 +172,14 @@ exports.getOrderByCompany = async (req, res, next) => {
             data = await Orders.findAll({
                 where: {
                     ...whereClause,
-                    idUser: null
+                    idUser: null,
+                    idStatus: null
                 },
                 include: [
+                    {
+                        model: Status,
+                        attributes: ['id', 'name']
+                    },
                     {
                         model: Tables,
                         include: [
@@ -200,10 +198,6 @@ exports.getOrderByCompany = async (req, res, next) => {
                                 model: Products
                             }
                         ]
-                    },
-                    {
-                        model: Notifications,
-                        where: { idStatus: activeStatus.id }
                     }
                 ],
                 limit: limit,
@@ -236,25 +230,27 @@ exports.getOrderByCompany = async (req, res, next) => {
                                 model: Products
                             }
                         ]
-                    },
-                    {
-                        model: Notifications,
-                        where: { idStatus: activeStatus.id }
                     }
                 ],
                 limit: limit,
                 offset: (page - 1) * limit,
                 order: [[filter, sort]],
             })
-        } else {
+        }
+        else if (status === 'progress') {
             data = await Orders.findAll({
                 where: {
                     ...whereClause,
                     idUser: {
                         [Op.not]: null
                     },
+                    idStatus: null
                 },
                 include: [
+                    {
+                        model: Status,
+                        attributes: ['id', 'name']
+                    },
                     {
                         model: Tables,
                         include: [
@@ -273,10 +269,6 @@ exports.getOrderByCompany = async (req, res, next) => {
                                 model: Products
                             }
                         ]
-                    },
-                    {
-                        model: Notifications,
-                        where: { idStatus: statusNotification }
                     }
                 ],
                 limit: limit,
@@ -310,23 +302,95 @@ exports.getOrderByCompany = async (req, res, next) => {
                                 model: Products
                             }
                         ]
+                    }
+                ]
+            })
+        }
+        else {
+            data = await Orders.findAll({
+                where: {
+                    ...whereClause,
+                    idUser: {
+                        [Op.not]: null
+                    },
+                    idStatus: idStatus
+                },
+                include: [
+                    {
+                        model: Status,
+                        attributes: ['id', 'name']
                     },
                     {
-                        model: Notifications,
-                        where: { idStatus: statusNotification }
+                        model: Tables,
+                        include: [
+                            {
+                                model: Companies,
+                                attributes: ['id'],
+                                where: { id: id }
+                            }
+                        ]
+                    },
+                    {
+                        model: OrdersProducts,
+                        attributes: ['id'],
+                        include: [
+                            {
+                                model: Products
+                            }
+                        ]
+                    }
+                ],
+                limit: limit,
+                offset: (page - 1) * limit,
+                order: [[filter, sort]],
+            })
+
+            totalElements = await Orders.findAll({
+                where: {
+                    ...whereClause,
+                    idUser: {
+                        [Op.not]: null
+                    },
+                    idStatus: idStatus
+                },
+                include: [
+                    {
+                        model: Tables,
+                        include: [
+                            {
+                                model: Companies,
+                                attributes: ['id'],
+                                where: { id: id }
+                            }
+                        ]
+                    },
+                    {
+                        model: OrdersProducts,
+                        attributes: ['id'],
+                        include: [
+                            {
+                                model: Products
+                            }
+                        ]
                     }
                 ]
             })
         }
 
-        const processed = await Orders.findAll({
+        const activeStatus = await Status.findOne({ where: { name: 'actif' } })
+        const orderFinalizedToday = await Orders.findAll({
             where: {
+                ...whereClause,
                 idUser: {
                     [Op.not]: null
                 },
-                ...whereClause
+                idStatus: activeStatus.id
             },
             include: [
+                {
+                    model: Status,
+                    attributes: ['id', 'name']
+                },
                 {
                     model: Tables,
                     include: [
@@ -338,8 +402,13 @@ exports.getOrderByCompany = async (req, res, next) => {
                     ]
                 },
                 {
-                    model: Notifications,
-                    where: { idStatus: inactiveStatus.id }
+                    model: OrdersProducts,
+                    attributes: ['id'],
+                    include: [
+                        {
+                            model: Products
+                        }
+                    ]
                 }
             ]
         })
@@ -352,7 +421,7 @@ exports.getOrderByCompany = async (req, res, next) => {
                 totalpages: Math.ceil(totalElements / limit),
                 currentElements: data.length,
                 totalElements: totalElements.length,
-                processed: processed.length,
+                orderFinalizedToday: orderFinalizedToday.length,
                 filter: filter,
                 sort: sort,
                 limit: limit,
@@ -363,7 +432,6 @@ exports.getOrderByCompany = async (req, res, next) => {
         next(err)
     }
 }
-
 
 // GET ORDER BY USER
 exports.getOrderByUser = async (req, res, next) => {
@@ -377,11 +445,18 @@ exports.getOrderByUser = async (req, res, next) => {
         const user = req.params.user
         if (!user) throw new customError('MissingParams', 'missing parameter')
 
-        // GET TOTAL DATA BY USER 
-        const inactiveStatus = await Status.findOne({ where: { name: 'inactif' } })
+        // GET TOTAL DATA OF USER IN THE COMPANY
+        const status = await Status.findOne({ where: { name: 'actif' } })
         const data = await Orders.findAll({
-            where: { idUser: user },
+            where: {
+                idUser: user,
+                idStatus: status.id
+            },
             include: [
+                {
+                    model: Status,
+                    attributes: ['id', 'name']
+                },
                 {
                     model: Tables,
                     include: [
@@ -391,10 +466,6 @@ exports.getOrderByUser = async (req, res, next) => {
                             where: { id: company }
                         }
                     ]
-                },
-                {
-                    model: Notifications,
-                    where: { idStatus: inactiveStatus.id }
                 }
             ],
             limit: limit,
@@ -407,10 +478,11 @@ exports.getOrderByUser = async (req, res, next) => {
         const startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate())
         const endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
 
-        // GET TOTAL DATA OF TODAY BY USER 
+        // GET TOTAL DATA OF TODAY OF THE COMPANY 
         const ordersToday = await Orders.findAll({
             where: {
                 idUser: user,
+                idStatus: status.id,
                 createdAt: {
                     [Op.between]: [startDate, endDate]
                 }
@@ -425,10 +497,6 @@ exports.getOrderByUser = async (req, res, next) => {
                             where: { id: company }
                         }
                     ]
-                },
-                {
-                    model: Notifications,
-                    where: { idStatus: inactiveStatus.id }
                 }
             ]
         })
@@ -485,7 +553,7 @@ exports.add = async (req, res, next) => {
                 }
             ]
         })
-        if (!data) throw new customError('NotFound', `${label} not created because the table does not exist`)
+        if (!data) throw new customError('TableNotFound', `${label} not created because the table does not exist`)
 
         // CHECK ORDER
         const id = uuid()
@@ -574,6 +642,9 @@ exports.update = async (req, res, next) => {
         data = await Orders.update({ quantity: req.body.quantity }, { where: { id: id } })
         if (!data) throw new customError('BadRequest', `${label} not modified`)
 
+        // EMIT SIGNAL TO FRONT OF ORDER
+        eventEmitter.emit('event', JSON.stringify(data.id))
+
         return res.json({ message: `${label} modified` })
     } catch (err) {
         next(err)
@@ -581,11 +652,13 @@ exports.update = async (req, res, next) => {
 }
 
 // UPDATE USER ID IN ORDER
-exports.updateUserIdInOrder = async (req, res, next) => {
+exports.underTreatment = async (req, res, next) => {
     try {
+        // GET ID ORDER
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
+        // GET ID USER
         const { user } = req.body
         if (!user) throw new customError('MissingData', 'missing data')
 
@@ -593,37 +666,92 @@ exports.updateUserIdInOrder = async (req, res, next) => {
         if (!data) throw new customError('NotFound', `${label} does not exist`)
 
         data = await Users.findOne({ where: { id: user } })
-        if (!data) throw new customError('NotFound', `${label} was not modified because this user ${user} does not exist`)
+        if (!data) throw new customError('NotFound', `${label} was not treaty because this user ${user} does not exist`)
+
+        // GET ID STATUS ACTIVE
+        const statusData = await Status.findOne({ where: { name: 'actif' } })
+        data = await Notifications.update({ idStatus: statusData.id }, { where: { idOrder: id } })
 
         data = await Orders.update({ idUser: user }, { where: { id: id } })
         if (!data) throw new customError('BadRequest', `${label} has not been processed`)
 
-        return res.json({ message: `${label} being processed` })
+        // EMIT SIGNAL TO FRONT OF ORDER
+        eventEmitter.emit('event', JSON.stringify(data.id))
+
+        return res.json({ message: `${label} is under treatment` })
     } catch (err) {
         next(err)
     }
 }
 
-// UPDATE ID STATUS IN NOTIFICATION
-exports.updateIdSatusInNotification = async (req, res, next) => {
+// CANCEL AN ORDER
+exports.cancelOrder = async (req, res, next) => {
     try {
+        // GET ID ORDER
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
+
+        // GET ID USER
+        const { user } = req.body
+        if (!user) throw new customError('MissingData', 'missing data')
+
+        // GET ID STATUS INACTIVE
+        const statusData = await Status.findOne({ where: { name: 'inactif' } })
 
         let data = await Orders.findOne({ where: { id: id } })
         if (!data) throw new customError('NotFound', `${label} does not exist`)
 
-        const status = await Status.findOne({
-            attributes: ['id'],
+        data = await Users.findOne({ where: { id: user } })
+        if (!data) throw new customError('NotFound', `${label} was not canceled because this user ${user} does not exist`)
+
+        data = await Orders.update({ idUser: user, idStatus: statusData.id }, { where: { id: id } })
+        if (!data) throw new customError('BadRequest', `${label} has not been canceled`)
+
+        // EMIT SIGNAL TO FRONT OF ORDER
+        eventEmitter.emit('event', JSON.stringify(data.id))
+
+        return res.json({ message: `${label} canceled` })
+    } catch (err) {
+        next(err)
+    }
+}
+
+// FINALIZED THE ORDER
+exports.finalizeOrder = async (req, res, next) => {
+    try {
+        // GET ID ORDER
+        const id = req.params.id
+        if (!id) throw new customError('MissingParams', 'missing parameter')
+
+        // GET ID USER
+        const { user } = req.body
+        if (!user) throw new customError('MissingData', 'missing data')
+
+        // GET ID STATUS ACTIVE
+        const statusData = await Status.findOne({ where: { name: 'actif' } })
+
+        let data = await Orders.findOne({ where: { id: id } })
+        if (!data) throw new customError('NotFound', `${label} does not exist`)
+
+        data = await Users.findOne({ where: { id: user } })
+        if (!data) throw new customError('NotFound', `${label} was not finalized because this user ${user} does not exist`)
+
+        // CHECK, IF USER TOOK THE ORDER IN FIRST 
+        data = await Orders.findOne({
             where: {
-                name: 'inactif'
+                id: id,
+                idUser: user
             }
         })
+        if (!data) throw new customError('NotAuthorizedToModified', `${label} was not canceled because this user ${user} is not authorized`)
 
-        data = await Notifications.update({ idStatus: status.id }, { where: { idOrder: id } })
-        if (!data) throw new customError('BadRequest', `${label} has not been processed`)
+        data = await Orders.update({ idUser: user, idStatus: statusData.id }, { where: { id: id } })
+        if (!data) throw new customError('BadRequest', `${label} has not been finalized`)
 
-        return res.json({ message: `${label} processed` })
+        // EMIT SIGNAL TO FRONT OF ORDER
+        eventEmitter.emit('event', JSON.stringify(data.id))
+
+        return res.json({ message: `${label} finalized` })
     } catch (err) {
         next(err)
     }

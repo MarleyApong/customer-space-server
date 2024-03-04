@@ -45,9 +45,9 @@ const corsOption = {
 app.use(cors(corsOption))
 
 // UPGRADE PROTECTION
-// app.use(helmet({
-//     contentSecutityPolicy: false
-// }))
+app.use(helmet({
+    contentSecutityPolicy: true
+}))
 
 // CONFIGURATION API && AUTHORIZATION
 app.use(express.json())

@@ -15,7 +15,7 @@ exports.getAll = async (req, res, next) => {
             offset: (page - 1) * limit,
         })
         const totalElements = await AnswersCustomers.count()
-        if (!data) throw new customError('NotFound', `${label} not found`)
+        if (!data) throw new customError('AnswersCustomersNotFound', `${label} not found`)
 
         return res.json({
             content: {
@@ -27,7 +27,8 @@ exports.getAll = async (req, res, next) => {
                 page: page,
             }
         })
-    } catch (err) {
+    } 
+    catch (err) {
         next(err)
     }
 
@@ -40,7 +41,7 @@ exports.getOne = async (req, res, next) => {
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
         const data = await AnswersCustomers.findOne({ where: { id: id } })
-        if (!data) throw new customError('NotFound', `${label} not found`)
+        if (!data) throw new customError('AnswersCustomersNotFound', `${label} not found`)
 
         return res.json({ content: data })
     } catch (err) {

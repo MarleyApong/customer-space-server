@@ -20,7 +20,8 @@ exports.averageQuestion = async (req, res, next) => {
          return res.json({ average })
       }
 
-   } catch (err) {
+   } 
+   catch (err) {
       next(err)
    }
 }
@@ -224,7 +225,8 @@ exports.minMaxAverage = async (req, res, next) => {
             average: minAverage
          }
       })
-   } catch (err) {
+   } 
+   catch (err) {
       next(err)
    }
 }
@@ -339,7 +341,8 @@ exports.minMaxAverageSurveys = async (req, res, next) => {
             average: minAverage
          }
       })
-   } catch (err) {
+   } 
+   catch (err) {
       next(err)
    }
 }

@@ -66,6 +66,10 @@ Orders.belongsTo(Users, { foreignKey: 'idUser' })
 Tables.hasMany(Orders, { foreignKey: 'idTable' })
 Orders.belongsTo(Tables, { foreignKey: 'idTable' })
 
+// ORDERS <- STATUS
+Status.hasMany(Orders, { foreignKey: 'idStatus' })
+Orders.belongsTo(Status, { foreignKey: 'idStatus' })
+
 // COMPANIES -> TABLES
 Companies.hasMany(Tables, { foreignKey: 'idCompany' })
 Tables.belongsTo(Companies, { foreignKey: 'idCompany' })

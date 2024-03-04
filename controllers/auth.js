@@ -32,7 +32,7 @@ exports.connect = async (req, res, next) => {
                 },
             ]
         })
-        if (!user) throw new customError('NotFound', `the user with ${email} does not exit`)
+        if (!user) throw new customError('UserAutNotFound', `the user with ${email} does not exit`)
 
         if (user.Status.name === 'inactif') throw new customError('AccessForbidden', `the user with ${email} have been blocked `)
 

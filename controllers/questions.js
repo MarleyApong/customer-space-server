@@ -17,6 +17,8 @@ exports.getAll = async (req, res, next) => {
 
     try {
         let whereClause = {}
+
+        // GET ID OF STATUS
         if (status) {
             if (status !== 'actif' && status !== 'inactif') {
                 whereClause.idStatus = status
@@ -27,6 +29,7 @@ exports.getAll = async (req, res, next) => {
             }
         }
 
+        // OPTION FILTER
         if (keyboard) {
             if (filter !== 'createdAt' && filter !== 'updateAt' && filter !== 'deletedAt') {
                 whereClause = {
@@ -54,7 +57,7 @@ exports.getAll = async (req, res, next) => {
             order: [[filter, sort]],
         })
         const totalElements = await Questions.count()
-        if (!data) throw new customError('NotFound', `${label} not found`)
+        if (!data) throw new customError('QuestionsNotFound', `${label} not found`)
 
         return res.json({
             content: {
@@ -68,7 +71,8 @@ exports.getAll = async (req, res, next) => {
                 page: page,
             }
         })
-    } catch (err) {
+    } 
+    catch (err) {
         next(err)
     }
 
@@ -77,6 +81,7 @@ exports.getAll = async (req, res, next) => {
 // GET ONE
 exports.getOne = async (req, res, next) => {
     try {
+        // GET ID OF QUESTION
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
@@ -84,10 +89,11 @@ exports.getOne = async (req, res, next) => {
             where: { id: id },
             include: [Surveys]
         })
-        if (!data) throw new customError('NotFound', `${label} not found`)
+        if (!data) throw new customError('ProductNotFound', `${label} not found`)
 
         return res.json({ content: data })
-    } catch (err) {
+    } 
+    catch (err) {
         next(err)
     }
 }
@@ -95,23 +101,27 @@ exports.getOne = async (req, res, next) => {
 // CREATE
 exports.add = async (req, res, next) => {
     try {
+        // GET DATA FOR ADD QUESTION
         const { idSurvey, name } = req.body
         if (!idSurvey || !name) throw new customError('MissingData', 'missing data')
+
+        // GET NEW ID FOR QUESTION
         const id = uuid()
         let data = await Questions.findOne({ where: { id: id } })
-        if (data) throw new customError('AlreadyExist', `this ${label} already exists`)
+        if (data) throw new customError('QuestionAlreadyExist', `this ${label} already exists`)
 
         data = await Surveys.findOne({ where: { id: idSurvey } })
-        if (!data) if (data) throw new customError('NotFound', `${label} not created because the survey with id: ${idSurvey} does not exist`)
+        if (!data) if (data) throw new customError('QuestionNotFound', `${label} not created because the survey with id: ${idSurvey} does not exist`)
         data = await Questions.create({
             id: uuid(),
             idSurvey: idSurvey,
             name: name,
         })
-        if (!data) throw new customError('BadRequest', `${label} not created`)
+        if (!data) throw new customError('AddQuestionError', `${label} not created`)
 
         return res.status(201).json({ message: `${label} created`, content: data })
-    } catch (err) {
+    } 
+    catch (err) {
         next(err)
     }
 }
@@ -119,18 +129,21 @@ exports.add = async (req, res, next) => {
 // PATCH
 exports.update = async (req, res, next) => {
     try {
+        // GET ID OF QUESTION
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
         if (!req.body.name) throw new customError('MissingData', 'missing data')
 
+        // CHECK THIS QUESTION
         let data = await Questions.findOne({ where: { id: id } })
-        if (!data) throw new customError('NotFound', `${label} not exist`)
+        if (!data) throw new customError('QuestionNotFound', `${label} not exist`)
 
         data = await Questions.update({ name: req.body.name }, { where: { id: id } })
-        if (!data) throw new customError('BadRequest', `${label} not modified`)
+        if (!data) throw new customError('QuestionUpdateError', `${label} not modified`)
 
         return res.json({ message: `${label} modified` })
-    } catch (err) {
+    } 
+    catch (err) {
         next(err)
     }
 }
@@ -138,17 +151,20 @@ exports.update = async (req, res, next) => {
 // EMPTY TRASH
 exports.delete = async (req, res, next) => {
     try {
+        // GET ID OF QUESTION
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
+        // CHECK THIS QUESTION
         let data = await Questions.findOne({ where: { id: id } })
-        if (!data) throw new customError('NotFound', `${label} not exist`)
+        if (!data) throw new customError('QuestionNotFound', `${label} not exist`)
 
         data = await Questions.destroy({ where: { id: id }, force: true })
-        if (!data) throw new customError('AlreadyExist', `${label} already deleted`)
+        if (!data) throw new customError('QuestionAlreadyDeleted', `${label} already deleted`)
 
         return res.json({ message: `${label} deleted` })
-    } catch (err) {
+    } 
+    catch (err) {
         next(err)
     }
 }
@@ -156,17 +172,20 @@ exports.delete = async (req, res, next) => {
 // SAVE TRASH
 exports.deleteTrash = async (req, res, next) => {
     try {
+        // GET ID OF QUESTION
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
+        // CHECK THIS QUESTION
         let data = await Questions.findOne({ where: { id: id } })
-        if (!data) throw new customError('NotFound', `${label} not exist`)
+        if (!data) throw new customError('QuestionNotFound', `${label} not exist`)
 
-        data = await Questions.destroy({ where: { id: id } })
-        if (!data) throw new customError('AlreadyExist', `${label} already deleted`)
+        data = await Questions.destroy({ where: { id: id }, force: true })
+        if (!data) throw new customError('QuestionAlreadyDeleted', `${label} already deleted`)
 
         return res.json({ message: `${label} deleted` })
-    } catch (err) {
+    } 
+    catch (err) {
         next(err)
     }
 }
@@ -174,14 +193,17 @@ exports.deleteTrash = async (req, res, next) => {
 // UNTRASH
 exports.restore = async (req, res, next) => {
     try {
+        // GET ID OF QUESTION
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
+        // CHECK THIS QUESTION
         let data = await Questions.restore({ where: { id: id } })
-        if (!data) throw new customError('AlreadyExist', `${label} already restored or does not exist`)
+        if (!data) throw new customError('QuestionAlreadyRestored', `${label} already restored or does not exist`)
 
         return res.json({ message: `${label} restored` })
-    } catch (err) {
+    } 
+    catch (err) {
         next(err)
     }
 }

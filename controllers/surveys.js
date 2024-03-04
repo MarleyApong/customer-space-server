@@ -285,9 +285,10 @@ exports.add = async (req, res, next) => {
         // COUNT SURVEY
         const countSurvey = await Surveys.count({ where: { idCompany: idCompany } })
 
-        if(countSurvey >= 1 ) {
-            throw new customError('AddSurveyError', `the limit for surveys is set at 2`)
+        if(countSurvey >= 5 ) {
+            throw new customError('AddSurveyError', `the limit for surveys is set at 5`)
         }
+
         data = await Surveys.create({
             id: id,
             idCompany: idCompany,
@@ -327,21 +328,37 @@ exports.changeStatus = async (req, res, next) => {
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
-        let data = await Surveys.findOne({
-            where: { id: id },
-            include: [
-                { model: Status }
-            ]
-        })
+        const idCompany = req.body.idCompany
+        if (!idCompany) throw new customError('MissingData', 'missing data')
 
-        let status = 'actif'
-        if (data.Status.name === 'actif') status = 'inactif'
-        data = await Status.findOne({ where: { name: status } })
+        // CHECK COMPANY BEFORE TO CONTINIUNG
+        if (await Companies.findOne({ where: { id: idCompany } })) {
+            let data = await Surveys.findOne({
+                where: { id: id },
+                include: [
+                    { model: Status }
+                ]
+            })
 
-        data = await Surveys.update({ idStatus: data.id }, { where: { id: id } })
-        if (!data) throw new customError('BadRequest', `${label} not modified`)
+            let status = 'actif'
+            if (data.Status.name === 'actif') status = 'inactif'
+            const idStatus = await Status.findOne({ where: { name: status } })
+            const inactiveStatus = await Status.findOne({ where: { name: 'inactif' } })
 
-        return res.json({ message: `${label} ${status === 'actif' ? 'active' : 'inactive'}` })
+            // DESABLE ALL SURVEYS
+            if (status === 'actif') {
+                data = await Surveys.update({ idStatus: inactiveStatus.id }, { where: { idCompany: idCompany } })
+            }
+
+            // CHANGE STATUS
+            data = await Surveys.update({ idStatus: idStatus.id }, { where: { id: id } })
+            if (!data) throw new customError('BadRequest', `${label} not modified`)
+
+            return res.json({ message: `${label} ${status === 'actif' ? 'active' : 'inactive'}` })
+        }
+        else {
+            throw new customError('NotFound', `${label} not modified because this ${idCompany} does not exist`)
+        }
     } catch (err) {
         next(err)
     }

@@ -15,6 +15,8 @@ exports.getAll = async (req, res, next) => {
 
     try {
         let whereClause = {}
+
+        // OPTION FILTER
         if (keyboard) {
             if (filter !== 'createdAt' && filter !== 'updateAt' && filter !== 'deletedAt') {
                 whereClause = {
@@ -95,7 +97,7 @@ exports.getAll = async (req, res, next) => {
                 }
             }
         })
-        if (!data) throw new customError('NotFound', `${label} not found`)
+        if (!data) throw new customError('CustomersNotFound', `${label} not found`)
 
         const formattedData = data.map(customer => ({
             id: customer.id,
@@ -128,7 +130,8 @@ exports.getAll = async (req, res, next) => {
                 page: page,
             }
         })
-    } catch (err) {
+    } 
+    catch (err) {
         next(err)
     }
 }
@@ -136,6 +139,7 @@ exports.getAll = async (req, res, next) => {
 // GET ONE
 exports.getOne = async (req, res, next) => {
     try {
+        // GET ID OF CUSTOMER
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
@@ -189,7 +193,7 @@ exports.getOne = async (req, res, next) => {
                 },
             }
         })
-        if (!data) throw new customError('NotFound', `${label} not found`)
+        if (!data) throw new customError('CustomerNotFound', `${label} not found`)
 
         const formattedData = {
             id: data.id,
@@ -208,7 +212,8 @@ exports.getOne = async (req, res, next) => {
 
         return res.json({ content: formattedData })
 
-    } catch (err) {
+    } 
+    catch (err) {
         next(err)
     }
 }
@@ -224,6 +229,7 @@ exports.getCustomerByUser = async (req, res, next) => {
     try {
         let whereClause = {}
 
+        // OPTION FILTER
         if (keyboard) {
             if (filter !== 'createdAt' && filter !== 'updateAt' && filter !== 'deletedAt') {
                 whereClause = {
@@ -232,7 +238,8 @@ exports.getCustomerByUser = async (req, res, next) => {
                         [Op.like]: `%${keyboard}%`
                     }
                 }
-            } else {
+            } 
+            else {
                 whereClause = {
                     ...whereClause,
                     [filter]: {
@@ -242,6 +249,7 @@ exports.getCustomerByUser = async (req, res, next) => {
             }
         }
 
+        // GET ID OF USER
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
@@ -367,7 +375,6 @@ exports.getCustomerByUser = async (req, res, next) => {
             }
         })
         
-
         const formattedData = data.map(customer => ({
             id: customer.id,
             name: customer.name,
@@ -408,7 +415,8 @@ exports.getCustomerByUser = async (req, res, next) => {
                 page: page,
             }
         })
-    } catch (err) {
+    } 
+    catch (err) {
         next(err)
     }
 }
@@ -421,16 +429,19 @@ exports.update = async (req, res, next) => {
 
         const { name, phone } = req.body
         if (!name || !phone) throw new customError('MissingData', 'missing data')
+
+        // CHECK CUSTOMER
         let data = await Customers.findOne({ where: { id: idCustomer } })
-        if (!data) throw new customError('AlreadyExist', `this ${label} does not exist`)
+        if (!data) throw new customError('CustomerAlreadyExist', `this ${label} does not exist`)
 
         data = await Customers.update({ name: name, phone: phone },
             { where: { id: idCustomer } }
         )
-        if (!data) throw new customError('BadRequest', `${label} not updated`)
+        if (!data) throw new customError('CompanyUpdateError', `${label} not updated`)
 
         return res.status(201).json({ message: `${label} updated`, content: data })
-    } catch (err) {
+    } 
+    catch (err) {
         next(err)
     }
 }
@@ -438,14 +449,16 @@ exports.update = async (req, res, next) => {
 // EMPTY TRASH
 exports.delete = async (req, res, next) => {
     try {
+        // GET ID OF CUSTOMER
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
+        // CHECK CUSTOMER
         let data = await Customers.findOne({ where: { id: id } })
         if (!data) throw new customError('NotFound', `${label} not exist`)
 
         data = await Customers.destroy({ where: { id: id }, force: true })
-        if (!data) throw new customError('AlreadyExist', `${label} already deleted`)
+        if (!data) throw new customError('CustomerAlreadyDeleted', `${label} already deleted`)
 
         return res.json({ message: `${label} deleted` })
     } catch (err) {
@@ -456,14 +469,16 @@ exports.delete = async (req, res, next) => {
 // SAVE TRASH
 exports.deleteTrash = async (req, res, next) => {
     try {
+        // GET ID OF CUSTOMER
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
+        // CHECK CUSTOMER
         let data = await Customers.findOne({ where: { id: id } })
         if (!data) throw new customError('NotFound', `${label} not exist`)
 
-        data = await Customers.destroy({ where: { id: id } })
-        if (!data) throw new customError('AlreadyExist', `${label} already deleted`)
+        data = await Customers.destroy({ where: { id: id }})
+        if (!data) throw new customError('CustomerAlreadyDeleted', `${label} already deleted`)
 
         return res.json({ message: `${label} deleted` })
     } catch (err) {
@@ -474,14 +489,17 @@ exports.deleteTrash = async (req, res, next) => {
 // UNTRASH
 exports.restore = async (req, res, next) => {
     try {
+        // GET ID OF CUSTOMER
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
+        // CHECK CUSTOMER
         let data = await Customers.restore({ where: { id: id } })
-        if (!data) throw new customError('AlreadyExist', `${label} already restored or does not exist`)
+        if (!data) throw new customError('CustomerAlreadyRestored', `${label} already restored or does not exist`)
 
         return res.json({ message: `${label} restored` })
-    } catch (err) {
+    } 
+    catch (err) {
         next(err)
     }
 }

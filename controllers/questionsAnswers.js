@@ -15,6 +15,7 @@ exports.getAll = async (req, res, next) => {
     try {
         let whereClause = {}
 
+        // OPTION FILTER
         if (keyboard) {
             if (filter !== 'createdAt' && filter !== 'updateAt' && filter !== 'deletedAt') {
                 whereClause = {
@@ -59,7 +60,7 @@ exports.getAll = async (req, res, next) => {
             order: [[filter, sort]],
         })
         const totalElements = await QuestionsAnswers.count()
-        if (!data) throw new customError('NotFound', `${label} not found`)
+        if (!data) throw new customError('QuestionsAnswersNotFound', `${label} not found`)
 
         return res.json({
             content: {
@@ -73,7 +74,8 @@ exports.getAll = async (req, res, next) => {
                 page: page,
             }
         })
-    } catch (err) {
+    }
+    catch (err) {
         next(err)
     }
 
@@ -86,10 +88,11 @@ exports.getOne = async (req, res, next) => {
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
         const data = await QuestionsAnswers.findOne({ where: { id: id } })
-        if (!data) throw new customError('NotFound', `${label} not found`)
+        if (!data) throw new customError('QuestionsAnswersNotFound', `${label} not found`)
 
         return res.json({ content: data })
-    } catch (err) {
+    }
+    catch (err) {
         next(err)
     }
 }
@@ -103,9 +106,11 @@ exports.getByQuestion = async (req, res, next) => {
     const keyboard = req.query.k
 
     try {
+        // GET ID OF QUESTION
         const id = req.params.id
         let whereClause = {}
 
+        // OPTION FILTER
         if (keyboard) {
             if (filter !== 'createdAt' && filter !== 'updateAt' && filter !== 'deletedAt') {
                 whereClause = {
@@ -130,9 +135,12 @@ exports.getByQuestion = async (req, res, next) => {
         }
 
         const data = await QuestionsAnswers.findAll({
-            where: { idQuestion: id },
             attributes: { exclude: ['id', 'idAnswer', 'updatedAt', 'deletedAt'] },
             include: [
+                {
+                    model: Questions,
+                    where: { id: id }
+                },
                 {
                     model: Answers,
                     attributes: { exclude: ['id', 'updatedAt', 'deletedAt'] },
@@ -145,7 +153,7 @@ exports.getByQuestion = async (req, res, next) => {
 
         const totalElements = await QuestionsAnswers.count()
         if (!data) {
-            throw new customError('NotFound', `${label} not found`)
+            throw new customError('QuestionsAnswersNotFound', `${label} not found`)
         }
 
         return res.json({
@@ -160,7 +168,8 @@ exports.getByQuestion = async (req, res, next) => {
                 page: page
             }
         })
-    } catch (err) {
+    }
+    catch (err) {
         next(err)
     }
 }

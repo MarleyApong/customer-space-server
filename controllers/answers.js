@@ -57,7 +57,7 @@ exports.getAll = async (req, res, next) => {
             order: [[filter, sort]],
         })
         const totalElements = await Answers.count()
-        if (!data) throw new customError('NotFound', `${label} not found`)
+        if (!data) throw new customError('AnswersNotFound', `${label} not found`)
 
         return res.json({
             content: {
@@ -71,10 +71,10 @@ exports.getAll = async (req, res, next) => {
                 page: page,
             }
         })
-    } catch (err) {
+    } 
+    catch (err) {
         next(err)
     }
-
 }
 
 // GET ONE
@@ -84,10 +84,11 @@ exports.getOne = async (req, res, next) => {
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
         const data = await Answers.findOne({ where: { id: id } })
-        if (!data) throw new customError('NotFound', `${label} not found`)
+        if (!data) throw new customError('AnswerNotFound', `${label} not found`)
 
         return res.json({ content: data })
-    } catch (err) {
+    } 
+    catch (err) {
         next(err)
     }
 }
@@ -114,13 +115,13 @@ exports.add = async (req, res, next) => {
 
             const id = uuid()
             if (await Answers.findOne({ where: { id: id } })) {
-                throw new customError('AlreadyExist', `this ${label} already exists`)
+                throw new customError('AnswerAlreadyExist', `this ${label} already exists`)
             }
 
-            // CHECK QUESTION AFTER QUESTION
+            // CHECK QUESTION AFTER EACH QUESTION
             const questionData = await Questions.findOne({ where: { id: idQuestion } })
             if (!questionData) {
-                throw new customError('NotFound', `${label} not created because the question with id: ${idQuestion} does not exist`)
+                throw new customError('AnswerQuestionNotFound', `${label} not created because the question with id: ${idQuestion} does not exist`)
             }
 
             // SECOND, CREATE ANSWERS
@@ -132,7 +133,7 @@ exports.add = async (req, res, next) => {
             })
 
             if (!createdAnswer) {
-                throw new customError('BadRequest', `${label} not created`)
+                throw new customError('AnswerNotAdd', `${label} not created`)
             }
 
             // THIRD, FOREIGN KEY
@@ -143,7 +144,8 @@ exports.add = async (req, res, next) => {
         }))
 
         return res.status(201).json({ message: `${label}s created`, content: answersData })
-    } catch (err) {
+    } 
+    catch (err) {
         next(err)
     }
 }
@@ -194,28 +196,11 @@ exports.getAnswersByOrganization = async (req, res, next) => {
                 }
             ]
         })
+        if (!data) throw new customError('AnswerNotFound', `${label} not found`)
 
         return res.json({ content: data })
-    } catch (err) {
-        next(err)
-    }
-}
-
-// PATCH
-exports.update = async (req, res, next) => {
-    try {
-        const id = req.params.id
-        if (!id) throw new customError('MissingParams', 'missing parameter')
-        if (!req.body.name) throw new customError('MissingData', 'missing data')
-
-        let data = await Answers.findOne({ where: { id: id } })
-        if (!data) throw new customError('NotFound', `${label} not exist`)
-
-        data = await Answers.update({ name: req.body.name }, { where: { id: id } })
-        if (!data) throw new customError('BadRequest', `${label} not modified`)
-
-        return res.json({ message: `${label} modified` })
-    } catch (err) {
+    } 
+    catch (err) {
         next(err)
     }
 }

@@ -14,6 +14,9 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING(64),
       allowNull: false
     },
+    idStatus: {
+      type: DataTypes.STRING(64)
+    },
     name: {
       type: DataTypes.STRING,
       allowNull: false

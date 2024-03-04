@@ -8,11 +8,11 @@ const label = "env"
 exports.getAll = async (req, res, next) => {
     try {
         const data = await Envs.findAll()
-        if (!data) throw new customError('NotFound', `${label} not found`)
+        if (!data) throw new customError('EnvsNotFound', `${label} not found`)
 
         return res.json({ content: data })
-    } catch (err) {
+    } 
+    catch (err) {
         next(err)
     }
 }
-

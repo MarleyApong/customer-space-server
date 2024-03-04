@@ -19,6 +19,8 @@ exports.getAll = async (req, res, next) => {
 
     try {
         let whereClause = {}
+
+        // GET ID OF STATUS
         if (status) {
             if (status !== 'actif' && status !== 'inactif') {
                 whereClause.idStatus = status
@@ -29,6 +31,7 @@ exports.getAll = async (req, res, next) => {
             }
         }
 
+        // OPTION FILTER
         if (keyboard) {
             if (filter !== 'createdAt' && filter !== 'updateAt' && filter !== 'deletedAt') {
                 whereClause = {
@@ -48,6 +51,7 @@ exports.getAll = async (req, res, next) => {
             }
         }
 
+        // GET ALL COMPANIES
         const data = await Companies.findAll({
             where: whereClause,
             include: [
@@ -69,6 +73,7 @@ exports.getAll = async (req, res, next) => {
             order: [[filter, sort]],
         })
 
+        // GET TOTAL ACTIVE COMPANIES
         const inProgress = await Companies.count({
             include: [
                 {
@@ -78,6 +83,7 @@ exports.getAll = async (req, res, next) => {
             ]
         })
 
+        // GET TOTAL INACTIVE COMPANIES
         const blocked = await Companies.count({
             include: [
                 {
@@ -87,8 +93,9 @@ exports.getAll = async (req, res, next) => {
             ]
         })
 
+        // GET TOTAL COMPANIES
         const totalElements = await Companies.count()
-        if (!data) throw new customError('NotFound', `${label} not found`)
+        if (!data) throw new customError('CompaniesNotFound', `${label} not found`)
 
         return res.json({
             content: {
@@ -104,7 +111,8 @@ exports.getAll = async (req, res, next) => {
                 page: page,
             }
         })
-    } catch (err) {
+    } 
+    catch (err) {
         next(err)
     }
 }
@@ -112,6 +120,7 @@ exports.getAll = async (req, res, next) => {
 // GET ONE
 exports.getOne = async (req, res, next) => {
     try {
+        // GET ID OF COMPANY
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
@@ -126,10 +135,11 @@ exports.getOne = async (req, res, next) => {
                 },
             ],
         })
-        if (!data) throw new customError('NotFound', `${label} not found`)
+        if (!data) throw new customError('CompanyNotFound', `${label} not found`)
 
         return res.json({ content: data })
-    } catch (err) {
+    } 
+    catch (err) {
         next(err)
     }
 }
@@ -145,6 +155,8 @@ exports.getCompanyByUser = async (req, res, next) => {
 
     try {
         let whereClause = {}
+
+        // GET ID OF STATUS
         if (status) {
             if (status !== 'actif' && status !== 'inactif') {
                 whereClause.idStatus = status
@@ -155,6 +167,7 @@ exports.getCompanyByUser = async (req, res, next) => {
             }
         }
 
+        // OPTION FILTER
         if (keyboard) {
             if (filter !== 'createdAt' && filter !== 'updateAt' && filter !== 'deletedAt') {
                 whereClause = {
@@ -173,9 +186,11 @@ exports.getCompanyByUser = async (req, res, next) => {
             }
         }
 
+        // GET ID OF USER
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
+        // GET TOTAL OF COMPANIES
         const totalCount = await Companies.count({
             include: [
                 {
@@ -199,6 +214,7 @@ exports.getCompanyByUser = async (req, res, next) => {
             where: whereClause
         })
 
+        // GET COMPANIES BY USER
         const userCompanies = await Companies.findAll({
             include: [
                 {
@@ -238,7 +254,8 @@ exports.getCompanyByUser = async (req, res, next) => {
                 page: page
             }
         })
-    } catch (err) {
+    } 
+    catch (err) {
         next(err)
     }
 }
@@ -246,9 +263,11 @@ exports.getCompanyByUser = async (req, res, next) => {
 // GET COMPANY BY ORGANIZATION
 exports.getCompaniesByOrganization = async (req, res, next) => {
     try {
+        // GET ID OF ORGANIZATION
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
+        // GET STATUS
         const status = req.query.status
         if (!status) new customError('MissingData', 'missing data')
 
@@ -262,33 +281,41 @@ exports.getCompaniesByOrganization = async (req, res, next) => {
                 }
             ],
         })
-        if (!data) throw new customError('NotFound', `${label} not found`)
+        if (!data) throw new customError('CompaniesNotFound', `${label} not found`)
 
         return res.json({ content: data })
-    } catch (err) {
+    } 
+    catch (err) {
         next(err)
     }
 }
 
+// GET WEBPAGE OF COMPANY
 exports.getWebpage = async (req, res, next) => {
     try {
+        // GET NAME OF WEBPAGE
         const webpage = req.params.id
         if (!webpage) throw new customError('MissingParams', 'missing parameter')
 
-        console.log("+++webpage", webpage)
+        // GET STATUS
+        const status = await Status.findOne({ where: { name: 'actif' } })
 
+        // GET COMPANY WITH THIS WEBPAGE
         const data = await Companies.findOne({
             where: { webpage: webpage },
             include: [
                 {
                     model: Surveys,
+                    where: { idStatus: status.id },
                     include: [
-                        { model: Questions }
+                        {
+                            model: Questions
+                        }
                     ]
                 },
             ],
         })
-        if (!data) throw new customError('NotFound', `${label} not found`)
+        if (!data) throw new customError('CompanyNotFound', `${label} not found`)
 
         const page = {
             name: data.name,
@@ -298,7 +325,8 @@ exports.getWebpage = async (req, res, next) => {
         }
 
         return res.json({ content: page })
-    } catch (err) {
+    } 
+    catch (err) {
         next(err)
     }
 }
@@ -306,12 +334,20 @@ exports.getWebpage = async (req, res, next) => {
 // CREATE
 exports.add = async (req, res, next) => {
     try {
+        // GET DATA FOR ADD COMPANY
         const { idStatus, idOrganization, name, description, category, phone, email, city, neighborhood } = req.body
+
+        // GET NEW ID OF COMPANY
         const id = uuid()
+
+        // CHECK THIS DATA
         if (!idStatus || !idOrganization || !name || !description || !phone || !city || !neighborhood) throw new customError('MissingData', 'missing data')
+
+        // CHECK, IF THIS COMPANY ALREADY EXIST BEFORE TO CONTINU
         let data = await Companies.findOne({ where: { id: id } })
         if (data) throw new customError('AlreadyExist', `this ${label} already exists`)
 
+        // CHECK ORGANIZATION
         data = await Organizations.findOne({ where: { id: idOrganization } })
         if (!data) if (data) throw new customError('NotFound', `${label} not created because the organization with id: ${idOrganization} does not exist`)
 
@@ -324,13 +360,13 @@ exports.add = async (req, res, next) => {
         // HERE, WE DELETE THE WORD 'PUBLIC' IN THE PATH
         const pathWithoutPublic = picturePath.substring(6)
 
-
         // CONVERT THE NAME TO LOWERCASE AND REMOVE SPACES
         const companyNameInLowerCaseWithoutSpaces = name.toLowerCase().replace(/\s/g, '')
 
         // CONCATENATE WITH THE LAST 3 CHARACTERS OF THE ID
         const namePage = companyNameInLowerCaseWithoutSpaces + id.slice(-3)
 
+        // ADD COMPANY
         data = await Companies.create({
             id: id,
             idStatus: idStatus,
@@ -347,11 +383,12 @@ exports.add = async (req, res, next) => {
         })
 
         if (!data) {
-            throw new customError('BadRequest', `${label} not created`)
+            throw new customError('AddCompanyError', `${label} not created`)
         }
 
         return res.status(201).json({ message: `${label} created`, content: data })
-    } catch (err) {
+    } 
+    catch (err) {
         next(err)
     }
 }
@@ -359,12 +396,15 @@ exports.add = async (req, res, next) => {
 // PATCH
 exports.update = async (req, res, next) => {
     try {
+        // GET ID OF COMPANY
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
+        // CHECK THIS COMPANY
         let data = await Companies.findOne({ where: { id: id } })
-        if (!data) throw new customError('NotFound', `${label} not exist`)
+        if (!data) throw new customError('CompanyNotFound', `${label} not exist`)
 
+        // NEW DATA WITOUT PICTURE
         const updatedFields = {
             name: req.body.name,
             description: req.body.description,
@@ -374,6 +414,7 @@ exports.update = async (req, res, next) => {
             neighborhood: req.body.neighborhood
         }
 
+        // CHANGE PICTURE
         if (req.file) {
             if (data.picture) {
                 const filePath = data.picture
@@ -390,11 +431,12 @@ exports.update = async (req, res, next) => {
         // UPDATE
         data = await Companies.update(updatedFields, { where: { id: id } })
         if (!data) {
-            throw new customError('BadRequest', `${label} not modified`)
+            throw new customError('CompanyUpdateError', `${label} not modified`)
         }
 
         return res.json({ message: `${label} modified` })
-    } catch (err) {
+    } 
+    catch (err) {
         next(err)
     }
 }
@@ -402,27 +444,31 @@ exports.update = async (req, res, next) => {
 // PATCH PICTURE
 exports.changeProfil = async (req, res, next) => {
     try {
+        // GET ID OF COMPANY
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
+        // CHECK THIS COMPANY
         let data = await Companies.findOne({ where: { id: id } })
-        if (!data) throw new customError('NotFound', `${label} not exist`)
+        if (!data) throw new customError('CompanyNotFound', `${label} not exist`)
 
+        // CHECK, IF PICTURE EXIST
         if (req.file) {
             let data = await Companies.findOne({ where: { id: id } })
             if (data.picture) {
                 const filename = `public${data.picture}`
-                fs.unlinkSync(filename)
+                fs.unlinkSync(filename) // DELETE LAST PICTURE
             }
 
             // HERE, WE DELETE THE WORD PUBLIC IN THE PATH
             const pathWithoutPublic = req.file.path.substring(6)
 
             data = await Companies.update({ picture: pathWithoutPublic }, { where: { id: id } })
-            if (!data) throw new customError('BadRequest', `${label} not modified`)
+            if (!data) throw new customError('PictureCompanyUpdateError', `${label} not modified`)
             return res.json({ message: 'picture updated' })
         }
-    } catch (err) {
+    } 
+    catch (err) {
         next(err)
     }
 }
@@ -430,24 +476,28 @@ exports.changeProfil = async (req, res, next) => {
 // PATCH STATUS
 exports.changeStatus = async (req, res, next) => {
     try {
+        // GET ID OF COMPANY
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
+        // CHECK THIS COMPANY
         let data = await Companies.findOne({
             where: { id: id },
             include: [
                 { model: Status }
             ]
         })
+
         let status = 'actif'
         if (data.Status.name === 'actif') status = 'inactif'
         data = await Status.findOne({ where: { name: status } })
 
         data = await Companies.update({ idStatus: data.id }, { where: { id: id } })
-        if (!data) throw new customError('BadRequest', `${label} not modified`)
+        if (!data) throw new customError('StatusCompanyUpdateError', `${label} not modified`)
 
         return res.json({ message: `${label} ${status === 'actif' ? 'active' : 'inactive'}` })
-    } catch (err) {
+    } 
+    catch (err) {
         next(err)
     }
 }
@@ -455,17 +505,20 @@ exports.changeStatus = async (req, res, next) => {
 // EMPTY TRASH
 exports.delete = async (req, res, next) => {
     try {
+        // GET ID OF COMPANY
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
+        // CHECK THIS COMPANY
         let data = await Companies.findOne({ where: { id: id } })
-        if (!data) throw new customError('NotFound', `${label} not exist`)
+        if (!data) throw new customError('CompanyNotFound', `${label} not exist`)
 
         data = await Companies.destroy({ where: { id: id }, force: true })
-        if (!data) throw new customError('AlreadyExist', `${label} already deleted`)
+        if (!data) throw new customError('CompanyAlreadyDeleted', `${label} already deleted`)
 
         return res.json({ message: `${label} deleted` })
-    } catch (err) {
+    } 
+    catch (err) {
         next(err)
     }
 }
@@ -473,14 +526,16 @@ exports.delete = async (req, res, next) => {
 // SAVE TRASH
 exports.deleteTrash = async (req, res, next) => {
     try {
+        // GET ID OF COMPANY
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
+        // CHECK THIS COMPANY
         let data = await Companies.findOne({ where: { id: id } })
-        if (!data) throw new customError('NotFound', `${label} not exist`)
+        if (!data) throw new customError('CompanyNotFound', `${label} not exist`)
 
         data = await Companies.destroy({ where: { id: id } })
-        if (!data) throw new customError('AlreadyExist', `${label} already deleted`)
+        if (!data) throw new customError('CompanyAlreadyDeleted', `${label} already deleted`)
 
         return res.json({ message: `${label} deleted` })
     } catch (err) {
@@ -491,11 +546,13 @@ exports.deleteTrash = async (req, res, next) => {
 // UNTRASH
 exports.restore = async (req, res, next) => {
     try {
+        // GET ID OF COMPANY
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
+        // CHECK THIS COMPANY
         let data = await Companies.restore({ where: { id: id } })
-        if (!data) throw new customError('AlreadyExist', `${label} already restored or does not exist`)
+        if (!data) throw new customError('CompanyAlreadyRestored', `${label} already restored or does not exist`)
 
         return res.json({ message: `${label} restored` })
     } catch (err) {

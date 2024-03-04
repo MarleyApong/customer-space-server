@@ -16,6 +16,8 @@ exports.getAll = async (req, res, next) => {
 
     try {
         let whereClause = {}
+
+        // GET ID OF STATUS
         if (status) {
             if (status !== 'actif' && status !== 'inactif') {
                 whereClause.idStatus = status
@@ -26,6 +28,7 @@ exports.getAll = async (req, res, next) => {
             }
         }
 
+        // OPTION FILTER
         if (keyboard) {
             if (filter !== 'createdAt' && filter !== 'updateAt' && filter !== 'deletedAt') {
                 whereClause = {
@@ -52,7 +55,7 @@ exports.getAll = async (req, res, next) => {
             order: [[filter, sort]],
         })
         const totalElements = await Notifications.count()
-        if (!data) throw new customError('NotFound', `${label} not found`)
+        if (!data) throw new customError('NotificationsNotFound', `${label} not found`)
 
         return res.json({
             content: {
@@ -66,23 +69,25 @@ exports.getAll = async (req, res, next) => {
                 page: page,
             }
         })
-    } catch (err) {
+    } 
+    catch (err) {
         next(err)
     }
-
 }
 
 // GET ONE
 exports.getOne = async (req, res, next) => {
     try {
+        // GET ID OF NOTIFICATION
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
 
         const data = await Notifications.findOne({ where: { id: id } })
-        if (!data) throw new customError('NotFound', `${label} not found`)
+        if (!data) throw new customError('NotificationNotFound', `${label} not found`)
 
         return res.json({ content: data })
-    } catch (err) {
+    } 
+    catch (err) {
         next(err)
     }
 }

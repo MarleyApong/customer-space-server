@@ -25,6 +25,7 @@ exports.getAll = async (req, res, next) => {
       if (role) whereClause.idRole = role
       if (env) whereClause.idEnv = env
 
+      // OPTION FILTER
       if (keyboard) {
          if (filter !== 'createdAt' && filter !== 'updateAt' && filter !== 'deletedAt') {
             whereClause = {
@@ -67,7 +68,10 @@ exports.getAll = async (req, res, next) => {
          order: [[filter, sort]],
       })
 
+      // TOTAL USER
       const totalElements = await data.length
+
+      // TOTAL ACTIVE USER 
       const inProgress = await Users.count({
          include: [
             {
@@ -77,6 +81,7 @@ exports.getAll = async (req, res, next) => {
          ]
       })
 
+      // TOTAL INACTIVE USER
       const blocked = await Users.count({
          include: [
             {
@@ -86,16 +91,17 @@ exports.getAll = async (req, res, next) => {
          ]
       })
 
+      // TOTAL USER WHERE ENV IS EXTERNAL
       const totalElementsExternal = await Users.count({
          include: [
             {
                model: Envs,
                attributes: ['id', 'name'],
-               where: {name: 'external'}
+               where: { name: 'external' }
             }
          ]
       })
-      if (!data) throw new customError('NotFound', `${label} not found`)
+      if (!data) throw new customError('UsersNotFound', `${label} not found`)
 
       return res.json({
          content: {
@@ -112,7 +118,8 @@ exports.getAll = async (req, res, next) => {
             page: page,
          }
       })
-   } catch (err) {
+   }
+   catch (err) {
       next(err)
    }
 }
@@ -120,6 +127,7 @@ exports.getAll = async (req, res, next) => {
 // GET ONE USER
 exports.getOne = async (req, res, next) => {
    try {
+      // GET ID OF USER
       const id = req.params.id
       if (!id) throw new customError('MissingParams', 'missing parameters')
 
@@ -140,16 +148,18 @@ exports.getOne = async (req, res, next) => {
             },
          ]
       })
-      if (!data) throw new customError('NotFound', `${label} not found`)
+      if (!data) throw new customError('UserNotFound', `${label} not found`)
 
       return res.json({ content: data })
-   } catch (err) {
+   }
+   catch (err) {
       next(err)
    }
 }
 
 // GET ORGANIZATION AND COMPANY BY USER ID
 exports.getOrganizationCompanyByUser = async (req, res, next) => {
+   // GET ID OF USER
    const id = req.params.id
    if (!id) throw new customError('MissingParams', 'missing parameters')
 
@@ -172,7 +182,7 @@ exports.getOrganizationCompanyByUser = async (req, res, next) => {
                },
                {
                   model: Companies,
-                  attributes: ['id', 'name', 'picture','webpage'],
+                  attributes: ['id', 'name', 'picture', 'webpage'],
                   include: [
                      {
                         model: Organizations,
@@ -190,7 +200,7 @@ exports.getOrganizationCompanyByUser = async (req, res, next) => {
       }
       else {
          const data = await Users.findOne({
-            where: {id: id},
+            where: { id: id },
             attributes: ['lastName', 'firstName'],
             include: [
                {
@@ -208,7 +218,8 @@ exports.getOrganizationCompanyByUser = async (req, res, next) => {
          })
       }
 
-   } catch (err) {
+   }
+   catch (err) {
       next(err)
    }
 }
@@ -216,13 +227,16 @@ exports.getOrganizationCompanyByUser = async (req, res, next) => {
 // CREATE
 exports.add = async (req, res, next) => {
    try {
+      // GET NEW ID USER
       const id = uuid()
+
+      // GET DATA FOR ADD USER
       const { idOrganization, idCompany, idRole, env, idStatus, firstName, lastName, phone, email, password } = req.body
 
       if (!idRole || !env || !idStatus || !firstName || !phone || !email || !password) throw new customError('MissingData', 'Missing Data')
       let data = await Users.findOne({ where: { email: email } })
 
-      if (data) throw new customError('AlreadyExist', `${label} with ${email} already exists`)
+      if (data) throw new customError('UserAlreadyExist', `${label} with ${email} already exists`)
       const regexPassword = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/
       const isValidPassword = regexPassword.test(password)
 
@@ -232,13 +246,13 @@ exports.add = async (req, res, next) => {
 
       if (idOrganization && idCompany) {
          data = await Organizations.findOne({ where: { id: idOrganization } })
-         if (!data) throw new customError('NotFound', `${label} not created because the organization with id: ${idOrganization} does not exist`)
+         if (!data) throw new customError('OrganizationNotFound', `${label} not created because the organization with id: ${idOrganization} does not exist`)
 
          data = await Companies.findOne({ where: { id: idCompany } })
-         if (!data) throw new customError('NotFound', `${label} not created because the company with id: ${idCompany} does not exist`)
+         if (!data) throw new customError('CompanyNotFound', `${label} not created because the company with id: ${idCompany} does not exist`)
       }
 
-      const role = await Roles.findOne({ where: { id: idRole } })
+      // const role = await Roles.findOne({ where: { id: idRole } })
       // if (role.name === 'super admin') {
       //    data = await Users.count({
       //       include: [
@@ -265,7 +279,7 @@ exports.add = async (req, res, next) => {
          email: email,
          password: hash
       })
-      if (!data) throw new customError('BadRequest', `${label} does not created`,)
+      if (!data) throw new customError('AddUserError', `${label} does not created`,)
 
       if (idOrganization) {
          data = await UsersOrganizations.create({
@@ -284,7 +298,8 @@ exports.add = async (req, res, next) => {
       }
 
       return res.status(201).json({ message: `${label} created`, data: data })
-   } catch (err) {
+   }
+   catch (err) {
       next(err)
    }
 }
@@ -292,16 +307,19 @@ exports.add = async (req, res, next) => {
 // PATCH
 exports.update = async (req, res, next) => {
    try {
+      // GET ID OF USER
       const id = req.params.id
       if (!id) throw new customError('MissingParams', 'missing parameter')
 
+      // CHECK THIS USER
       let data = await Users.findOne({ where: { id: id } })
-      if (!data) throw new customError('NotFound', `this ${label} does not exist`)
+      if (!data) throw new customError('UserNotFound', `this ${label} does not exist`)
 
       data = await Users.update(req.body, { where: { id: id } })
-      if (!data) throw new customError('BadRequest', `${label} does  not modified`)
+      if (!data) throw new customError('UserUpdateError', `${label} does  not modified`)
       return res.json({ message: `${label} modified` })
-   } catch (err) {
+   }
+   catch (err) {
       next(err)
    }
 }
@@ -309,9 +327,11 @@ exports.update = async (req, res, next) => {
 // PATCH STATUS
 exports.changeStatus = async (req, res, next) => {
    try {
+      // GET ID OF USER
       const id = req.params.id
       if (!id) throw new customError('MissingParams', 'missing parameter')
 
+      // CHECK THIS USER
       let data = await Users.findOne({
          where: { id: id },
          include: [
@@ -319,15 +339,18 @@ exports.changeStatus = async (req, res, next) => {
          ]
       })
 
+      if (!data) throw new customError('UserNotFound', `this ${label} does not exist`)
+
       let status = 'actif'
       if (data.Status.name === 'actif') status = 'inactif'
       data = await Status.findOne({ where: { name: status } })
 
       data = await Users.update({ idStatus: data.id }, { where: { id: id } })
-      if (!data) throw new customError('BadRequest', `${label} not modified`)
+      if (!data) throw new customError('StatusUserUpdateError', `${label} not modified`)
 
       return res.json({ message: `${label} ${status === 'actif' ? 'active' : 'inactive'}` })
-   } catch (err) {
+   }
+   catch (err) {
       next(err)
    }
 }
@@ -335,29 +358,34 @@ exports.changeStatus = async (req, res, next) => {
 // PATCH ROLES
 exports.changeRole = async (req, res, next) => {
    try {
+      // GET ID OF USER
       const id = req.params.id
       const role = req.params.role
       if (!id) throw new customError('MissingParams', 'missing parameter')
 
+      // CHECK THIS USER
       let data = await Users.findOne({ where: { id: id } })
-      if (!data) throw new customError('NotFound', `this ${label} does not exist`)
+      if (!data) throw new customError('UserNotFound', `this ${label} does not exist`)
 
       data = await Users.update({ idRole: role }, { where: { id: id } })
-      if (!data) throw new customError('BadRequest', `${label} not modified`)
+      if (!data) throw new customError('RoleUpdateError', `${label} not modified`)
       return res.json({ message: `Role modified` })
-   } catch (err) {
+   }
+   catch (err) {
       next(err)
    }
 }
 
 exports.changePassword = async (req, res, next) => {
    try {
+      // GET ID OF USER
       const id = req.params.id
       const { lastPassword, newPassword } = req.body
       if (!id) throw new customError('MissingParams', 'missing parameter')
 
+      // CHECH THIS USER
       let data = await Users.findOne({ where: { id: id } })
-      if (!data) throw new customError('NotFound', `this ${label} does not exist`)
+      if (!data) throw new customError('UserNotFound', `this ${label} does not exist`)
 
       // COMPARE PASSWORD
       const compare = await bcrypt.compare(lastPassword, data.password)
@@ -372,9 +400,10 @@ exports.changePassword = async (req, res, next) => {
       if (!hash) throw new customError('ProcessHashFailed', 'wrong password')
 
       data = await Users.update({ password: hash }, { where: { id: id } })
-      if (!data) throw new customError('BadRequest', `${label} does  not modified`)
+      if (!data) throw new customError('PasswordUserUpdateError', `${label} does not modified`)
       return res.json({ message: 'password modified' })
-   } catch (err) {
+   }
+   catch (err) {
       next(err)
    }
 }
@@ -382,17 +411,20 @@ exports.changePassword = async (req, res, next) => {
 // EMPTY TRASH
 exports.delete = async (req, res, next) => {
    try {
+      // GET ID OF USER
       const id = req.params.id
       if (!id) throw new customError('MissingParams', 'missing parameter')
 
+      // CHECK THIS USER
       let data = await Users.findOne({ where: { id: id } })
-      if (!data) throw new customError('NotFound', `${label} not exist`)
+      if (!data) throw new customError('UserNotFound', `${label} not exist`)
 
       data = await Users.destroy({ where: { id: id }, force: true })
-      if (!data) throw new customError('BadRequest', `${label} not deleted`)
+      if (!data) throw new customError('UserAlreadyDeleted', `${label} not deleted`)
 
       return res.json({ message: `${label} deleted` })
-   } catch (err) {
+   }
+   catch (err) {
       next(err)
    }
 }
@@ -400,17 +432,20 @@ exports.delete = async (req, res, next) => {
 // SAVE TRASH
 exports.deleteTrash = async (req, res, next) => {
    try {
+      // GET ID OF USER
       const id = req.params.id
       if (!id) throw new customError('MissingParams', 'missing parameter')
 
+      // CHECK THIS USER
       let data = await Users.findOne({ where: { id: id } })
-      if (!data) throw new customError('NotFound', `${label} not exist`)
+      if (!data) throw new customError('UserNotFound', `${label} not exist`)
 
       data = await Users.destroy({ where: { id: id } })
-      if (!data) throw new customError('BadRequest', `${label} not deleted`)
+      if (!data) throw new customError('UserAlreadyDeleted', `${label} not deleted`)
 
       return res.json({ message: `${label} deleted` })
-   } catch (err) {
+   }
+   catch (err) {
       next(err)
    }
 }
@@ -418,14 +453,17 @@ exports.deleteTrash = async (req, res, next) => {
 // UNTRASH
 exports.restore = async (req, res, next) => {
    try {
+      // GET ID OF USER
       const id = req.params.id
       if (!id) throw new customError('MissingParams', 'missing parameter')
 
+      // CHECK THIS USER
       let data = await Users.restore({ where: { id: id } })
-      if (!data) throw new customError('AlreadyExist', `${label} already restored or does not exist`)
+      if (!data) throw new customError('UserAlreadyRestored', `${label} already restored or does not exist`)
 
       return res.json({ message: `${label} restored` })
-   } catch (err) {
+   } 
+   catch (err) {
       next(err)
    }
 }

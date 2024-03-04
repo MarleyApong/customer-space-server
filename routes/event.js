@@ -12,9 +12,9 @@ router.get('/order', (req, res) => {
       'Connection': 'keep-alive'
    })
 
-   res.write('event: connected\n')
-   res.write('data: you are now subscribe\n')
-   res.write('id: 1\n\n')
+   // res.write('event: connected\n')
+   // res.write('data: you are now subscribe\n')
+   // res.write('id: 1\n\n')
 
    let counter = 0
    eventEmitter.on('event', (data) => {
