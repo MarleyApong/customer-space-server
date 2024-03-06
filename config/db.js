@@ -2,7 +2,7 @@ const { Sequelize } = require("sequelize")
 const path = require("path")
 
 // LOAD CONFIGURATION
-const env = process.env.NODE_ENV || "production"
+const env = process.env.NODE_ENV || "developement"
 const configPath = path.join(__dirname, "config.json")
 const config = require(configPath)[env]
 

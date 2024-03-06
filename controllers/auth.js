@@ -1,6 +1,4 @@
 const bcrypt = require('bcrypt')
-const fs = require('fs')
-const path = require('path')
 const jwt = require('jsonwebtoken')
 const { v4: uuid } = require('uuid')
 const { Users, LogsUsers, Status, Roles, Envs } = require('../models')
@@ -11,7 +9,6 @@ exports.connect = async (req, res, next) => {
         const { email, password } = req.body
         if (!email || !password) throw customError('MissingData', 'missing data')
 
-        const privateKey = fs.readFileSync(path.join(__dirname, "../privateKey.key"))
         const user = await Users.findOne({
             attributes: {
                 exclude: ['createdAt', 'updatedAt', 'deletedAt']
@@ -41,7 +38,7 @@ exports.connect = async (req, res, next) => {
         if (!hash) throw new customError('ProcessHashFailed', 'wrong password')
 
         // GENERED TOKEN
-        const token = jwt.sign({}, privateKey, { expiresIn: process.env.JWT_DURING, algorithm: process.env.JWT_ALGORITHM })
+        const token = jwt.sign({}, process.env.JWT_SECRET, { expiresIn: process.env.JWT_DURING, algorithm: process.env.JWT_ALGORITHM })
 
         await LogsUsers.create({
             id: uuid(),

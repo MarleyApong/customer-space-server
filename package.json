@@ -5,7 +5,8 @@
   "main": "app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "server": "nodemon -r dotenv/config app"
+    "server": "nodemon -r dotenv/config app",
+    "start": "node app"
   },
   "keywords": [],
   "author": "Marley Apong",
