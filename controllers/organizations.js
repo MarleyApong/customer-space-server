@@ -1,6 +1,7 @@
 const { Op } = require('sequelize')
 const { v4: uuid } = require('uuid')
 const fs = require('fs')
+const path = require('path')
 const multer = require('multer')
 const { Organizations, Companies, Status, UsersOrganizations, Users } = require('../models')
 const customError = require('../hooks/customError')
@@ -90,6 +91,53 @@ exports.getAll = async (req, res, next) => {
         const totalElements = await Organizations.count()
         if (!data) throw new customError('OrganizationsNotFound', `${label} not found`)
 
+        // GET PATH PICTURE
+        const picturePath = 'public' + data.picture
+
+        // CHECK PICTURE
+        if (!data.picture) {
+            return res.json({
+                content: {
+                    data: data,
+                    totalPages: Math.ceil(totalElements / limit),
+                    currentElements: data.length,
+                    totalElements: totalElements,
+                    inProgress: inProgress,
+                    blocked: blocked,
+                    filter: filter,
+                    sort: sort,
+                    limit: limit,
+                    page: page,
+                }
+            })
+        }
+
+        // CHECK FILE
+        if (!fs.existsSync(picturePath)) {
+            throw new customError('ImageNotFound', 'Image not found');
+        }
+
+        // READ IMAGE CONTENT
+        const imageContent = fs.readFileSync(picturePath)
+
+        // GET EXTENSION OF PICTURE
+        const extension = path.extname(picturePath).toLowerCase()
+
+        // DETERMINE MIME TYPE BASED ON FILE EXTENSION
+        let mimeType
+        if (extension === '.png') {
+            mimeType = 'image/png'
+        }
+        else if (extension === '.jpg' || extension === '.jpeg') {
+            mimeType = 'image/jpeg'
+        }
+        else {
+            throw new customError('InvalidImageType', 'Unsupported image type')
+        }
+
+        // PUT IMAGE CONTENT IN OBJET DATA
+        data.picture = `data:${mimeType};base64,${imageContent.toString('base64')}`
+
         return res.json({
             content: {
                 data: data,
@@ -130,6 +178,40 @@ exports.getOne = async (req, res, next) => {
         })
         if (!data) throw new customError('OrganizationNotFound', `${label} not found`)
 
+        // GET PATH PICTURE
+        const picturePath = 'public' + data.picture
+
+        // CHECK PICTURE
+        if (!data.picture) {
+            return res.json({ content: data })
+        }
+
+        // CHECK FILE
+        if (!fs.existsSync(picturePath)) {
+            throw new customError('ImageNotFound', 'Image not found');
+        }
+
+        // READ IMAGE CONTENT
+        const imageContent = fs.readFileSync(picturePath)
+
+        // GET EXTENSION OF PICTURE
+        const extension = path.extname(picturePath).toLowerCase()
+
+        // DETERMINE MIME TYPE BASED ON FILE EXTENSION
+        let mimeType
+        if (extension === '.png') {
+            mimeType = 'image/png'
+        }
+        else if (extension === '.jpg' || extension === '.jpeg') {
+            mimeType = 'image/jpeg'
+        }
+        else {
+            throw new customError('InvalidImageType', 'Unsupported image type')
+        }
+
+        // PUT IMAGE CONTENT IN OBJET DATA
+        data.picture = `data:${mimeType};base64,${imageContent.toString('base64')}`
+        
         return res.json({ content: data })
     }
     catch (err) {
@@ -163,6 +245,40 @@ exports.getOrganizationByUser = async (req, res, next) => {
 
         if (!data) throw new customError('OrganizationsNotFound', `${label} not found`)
 
+        // GET PATH PICTURE
+        const picturePath = 'public' + data.picture
+
+        // CHECK PICTURE
+        if (!data.picture) {
+            return res.json({ content: data })
+        }
+
+        // CHECK FILE
+        if (!fs.existsSync(picturePath)) {
+            throw new customError('ImageNotFound', 'Image not found');
+        }
+
+        // READ IMAGE CONTENT
+        const imageContent = fs.readFileSync(picturePath)
+
+        // GET EXTENSION OF PICTURE
+        const extension = path.extname(picturePath).toLowerCase()
+
+        // DETERMINE MIME TYPE BASED ON FILE EXTENSION
+        let mimeType
+        if (extension === '.png') {
+            mimeType = 'image/png'
+        }
+        else if (extension === '.jpg' || extension === '.jpeg') {
+            mimeType = 'image/jpeg'
+        }
+        else {
+            throw new customError('InvalidImageType', 'Unsupported image type')
+        }
+
+        // PUT IMAGE CONTENT IN OBJET DATA
+        data.picture = `data:${mimeType};base64,${imageContent.toString('base64')}`
+
         return res.json({ content: data })
     }
     catch (err) {
@@ -189,6 +305,8 @@ exports.add = async (req, res, next) => {
 
         // HERE, WE DELETE THE WORD PUBLIC IN THE PATH
         const pathWithoutPublic = picturePath.substring(6)
+
+        console.log('pathWithoutPublic========', pathWithoutPublic)
 
         let data = await Organizations.findOne({ where: { id: id } })
         if (data) throw new customError('OrganizationAlreadyExist', `this ${label} already exists`)

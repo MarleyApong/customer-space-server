@@ -1,3 +1,4 @@
+const path = require('path')
 const { Op } = require('sequelize')
 const { v4: uuid } = require('uuid')
 const { Orders, Users, OrdersProducts, Tables, Status, Companies, Notifications, Products } = require('../models')
@@ -56,6 +57,8 @@ exports.getAll = async (req, res, next) => {
         const totalElements = await Orders.count()
         if (!data) throw new customError('NotFound', `${label} not found`)
 
+        console.log('data', data);
+
         return res.json({
             content: {
                 data: data.rows,
@@ -105,6 +108,39 @@ exports.getOne = async (req, res, next) => {
             ],
         })
         if (!data) throw new customError('NotFound', `${label} not found`)
+
+        // CHECK IF THE ORDER CONTAINS PRODUCTS WITH AN ASSOCIATED IMAGE
+        if (data.OrdersProducts && data.OrdersProducts.length > 0) {
+            // FIND THE FIRST PRODUCT WITH AN IMAGE
+            const productWithImage = data.OrdersProducts.find(product => product.Product && product.Product.picture);
+
+            // IF A PRODUCT WITH AN IMAGE IS FOUND, USE ITS IMAGE
+            if (productWithImage && productWithImage.Product && productWithImage.Product.picture) {
+                const picturePath = 'public' + productWithImage.Product.picture;
+
+                // CHECK IF THE IMAGE FILE EXISTS
+                if (fs.existsSync(picturePath)) {
+                    // READ THE CONTENT OF THE IMAGE
+                    const imageContent = fs.readFileSync(picturePath);
+
+                    // GET THE FILE EXTENSION OF THE IMAGE
+                    const extension = path.extname(picturePath).toLowerCase();
+
+                    // DETERMINE THE MIME TYPE BASED ON THE FILE EXTENSION
+                    let mimeType;
+                    if (extension === '.png') {
+                        mimeType = 'image/png';
+                    } else if (extension === '.jpg' || extension === '.jpeg') {
+                        mimeType = 'image/jpeg';
+                    } else {
+                        throw new customError('InvalidImageType', 'Unsupported image type');
+                    }
+
+                    // PUT THE CONTENT OF THE IMAGE IN THE picture PROPERTY OF THE data OBJECT
+                    data.picture = `data:${mimeType};base64,${imageContent.toString('base64')}`;
+                }
+            }
+        }
 
         return res.json({ content: data })
     } catch (err) {
@@ -414,6 +450,28 @@ exports.getOrderByCompany = async (req, res, next) => {
         })
 
         if (!data) throw new customError('NotFound', `${label} not found`)
+
+        data.forEach(order => {
+            order.OrdersProducts.forEach(orderProduct => {
+                const product = orderProduct.Product
+                if (product && product.picture) {
+                    const picturePath = 'public' + product.picture;
+                    if (fs.existsSync(picturePath)) {
+                        const imageContent = fs.readFileSync(picturePath)
+                        const extension = path.extname(picturePath).toLowerCase()
+                        let mimeType
+                        if (extension === '.png') {
+                            mimeType = 'image/png'
+                        } else if (extension === '.jpg' || extension === '.jpeg') {
+                            mimeType = 'image/jpeg'
+                        } else {
+                            throw new customError('InvalidImageType', 'Unsupported image type')
+                        }
+                        product.picture = `data:${mimeType};base64,${imageContent.toString('base64')}`
+                    }
+                }
+            })
+        })
 
         return res.json({
             content: {

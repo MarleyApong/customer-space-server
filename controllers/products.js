@@ -361,6 +361,8 @@ exports.add = async (req, res, next) => {
             picturePath = req.file.path // PATH
         }
 
+        
+
         // HERE, WE DELETE THE WORD 'PUBLIC' IN THE PATH
         const pathWithoutPublic = picturePath.substring(6)
 

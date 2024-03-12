@@ -1,4 +1,5 @@
 const fs = require('fs')
+const path = require('path')
 const multer = require('multer')
 const { Op } = require('sequelize')
 const { v4: uuid } = require('uuid')
@@ -97,6 +98,53 @@ exports.getAll = async (req, res, next) => {
         const totalElements = await Companies.count()
         if (!data) throw new customError('CompaniesNotFound', `${label} not found`)
 
+        // GET PATH PICTURE
+        const picturePath = 'public' + data.picture
+
+        // CHECK PICTURE
+        if (!data.picture) {
+            return res.json({
+                content: {
+                    data: data,
+                    totalPages: Math.ceil(totalElements / limit),
+                    currentElements: data.length,
+                    totalElements: totalElements,
+                    inProgress: inProgress,
+                    blocked: blocked,
+                    filter: filter,
+                    sort: sort,
+                    limit: limit,
+                    page: page,
+                }
+            })
+        }
+
+        // CHECK FILE
+        if (!fs.existsSync(picturePath)) {
+            throw new customError('ImageNotFound', 'Image not found');
+        }
+
+        // READ IMAGE CONTENT
+        const imageContent = fs.readFileSync(picturePath)
+
+        // GET EXTENSION OF PICTURE
+        const extension = path.extname(picturePath).toLowerCase()
+
+        // DETERMINE MIME TYPE BASED ON FILE EXTENSION
+        let mimeType
+        if (extension === '.png') {
+            mimeType = 'image/png'
+        }
+        else if (extension === '.jpg' || extension === '.jpeg') {
+            mimeType = 'image/jpeg'
+        }
+        else {
+            throw new customError('InvalidImageType', 'Unsupported image type')
+        }
+
+        // PUT IMAGE CONTENT IN OBJET DATA
+        data.picture = `data:${mimeType};base64,${imageContent.toString('base64')}`
+
         return res.json({
             content: {
                 data: data,
@@ -111,7 +159,7 @@ exports.getAll = async (req, res, next) => {
                 page: page,
             }
         })
-    } 
+    }
     catch (err) {
         next(err)
     }
@@ -137,8 +185,42 @@ exports.getOne = async (req, res, next) => {
         })
         if (!data) throw new customError('CompanyNotFound', `${label} not found`)
 
+        // GET PATH PICTURE
+        const picturePath = 'public' + data.picture
+
+        // CHECK PICTURE
+        if (!data.picture) {
+            return res.json({ content: data })
+        }
+
+        // CHECK FILE
+        if (!fs.existsSync(picturePath)) {
+            throw new customError('ImageNotFound', 'Image not found');
+        }
+
+        // READ IMAGE CONTENT
+        const imageContent = fs.readFileSync(picturePath)
+
+        // GET EXTENSION OF PICTURE
+        const extension = path.extname(picturePath).toLowerCase()
+
+        // DETERMINE MIME TYPE BASED ON FILE EXTENSION
+        let mimeType
+        if (extension === '.png') {
+            mimeType = 'image/png'
+        }
+        else if (extension === '.jpg' || extension === '.jpeg') {
+            mimeType = 'image/jpeg'
+        }
+        else {
+            throw new customError('InvalidImageType', 'Unsupported image type')
+        }
+
+        // PUT IMAGE CONTENT IN OBJET DATA
+        data.picture = `data:${mimeType};base64,${imageContent.toString('base64')}`
+
         return res.json({ content: data })
-    } 
+    }
     catch (err) {
         next(err)
     }
@@ -241,6 +323,52 @@ exports.getCompanyByUser = async (req, res, next) => {
             order: [[filter, sort]],
         })
 
+        // GET PATH PICTURE
+        const picturePath = 'public' + userCompanies.picture
+
+        // CHECK PICTURE
+        if (!userCompanies.picture) {
+            return res.json({
+                totalCompanies: totalCount,
+                content: {
+                    data: userCompanies,
+                    totalPages: Math.ceil(totalCount / limit),
+                    currentElements: userCompanies.length,
+                    totalElements: totalCount,
+                    filter: filter,
+                    sort: sort,
+                    limit: limit,
+                    page: page
+                }
+            })
+        }
+
+        // CHECK FILE
+        if (!fs.existsSync(picturePath)) {
+            throw new customError('ImageNotFound', 'Image not found');
+        }
+
+        // READ IMAGE CONTENT
+        const imageContent = fs.readFileSync(picturePath)
+
+        // GET EXTENSION OF PICTURE
+        const extension = path.extname(picturePath).toLowerCase()
+
+        // DETERMINE MIME TYPE BASED ON FILE EXTENSION
+        let mimeType
+        if (extension === '.png') {
+            mimeType = 'image/png'
+        }
+        else if (extension === '.jpg' || extension === '.jpeg') {
+            mimeType = 'image/jpeg'
+        }
+        else {
+            throw new customError('InvalidImageType', 'Unsupported image type')
+        }
+
+        // PUT IMAGE CONTENT IN OBJET DATA
+        userCompanies.picture = `data:${mimeType};base64,${imageContent.toString('base64')}`
+
         return res.json({
             totalCompanies: totalCount,
             content: {
@@ -254,7 +382,7 @@ exports.getCompanyByUser = async (req, res, next) => {
                 page: page
             }
         })
-    } 
+    }
     catch (err) {
         next(err)
     }
@@ -283,8 +411,42 @@ exports.getCompaniesByOrganization = async (req, res, next) => {
         })
         if (!data) throw new customError('CompaniesNotFound', `${label} not found`)
 
+        // GET PATH PICTURE
+        const picturePath = 'public' + data.picture
+
+        // CHECK PICTURE
+        if (!data.picture) {
+            return res.json({ content: data })
+        }
+
+        // CHECK FILE
+        if (!fs.existsSync(picturePath)) {
+            throw new customError('ImageNotFound', 'Image not found');
+        }
+
+        // READ IMAGE CONTENT
+        const imageContent = fs.readFileSync(picturePath)
+
+        // GET EXTENSION OF PICTURE
+        const extension = path.extname(picturePath).toLowerCase()
+
+        // DETERMINE MIME TYPE BASED ON FILE EXTENSION
+        let mimeType
+        if (extension === '.png') {
+            mimeType = 'image/png'
+        }
+        else if (extension === '.jpg' || extension === '.jpeg') {
+            mimeType = 'image/jpeg'
+        }
+        else {
+            throw new customError('InvalidImageType', 'Unsupported image type')
+        }
+
+        // PUT IMAGE CONTENT IN OBJET DATA
+        data.picture = `data:${mimeType};base64,${imageContent.toString('base64')}`
+
         return res.json({ content: data })
-    } 
+    }
     catch (err) {
         next(err)
     }
@@ -317,15 +479,41 @@ exports.getWebpage = async (req, res, next) => {
         })
         if (!data) throw new customError('CompanyNotFound', `${label} not found`)
 
+        // GET PATH PICTURE
+        const picturePath = 'public' + data.picture
+
+        // CHECK FILE
+        if (!fs.existsSync(picturePath)) {
+            throw new customError('ImageNotFound', 'Image not found');
+        }
+
+        // READ IMAGE CONTENT
+        const imageContent = fs.readFileSync(picturePath)
+
+        // GET EXTENSION OF PICTURE
+        const extension = path.extname(picturePath).toLowerCase()
+
+        // DETERMINE MIME TYPE BASED ON FILE EXTENSION
+        let mimeType
+        if (extension === '.png') {
+            mimeType = 'image/png'
+        }
+        else if (extension === '.jpg' || extension === '.jpeg') {
+            mimeType = 'image/jpeg'
+        }
+        else {
+            throw new customError('InvalidImageType', 'Unsupported image type')
+        }
+
         const page = {
             name: data.name,
             description: data.description,
-            picture: data.picture,
+            picture: `data:${mimeType};base64,${imageContent.toString('base64')}`,
             surveys: data.Surveys
         }
 
         return res.json({ content: page })
-    } 
+    }
     catch (err) {
         next(err)
     }
@@ -387,7 +575,7 @@ exports.add = async (req, res, next) => {
         }
 
         return res.status(201).json({ message: `${label} created`, content: data })
-    } 
+    }
     catch (err) {
         next(err)
     }
@@ -435,7 +623,7 @@ exports.update = async (req, res, next) => {
         }
 
         return res.json({ message: `${label} modified` })
-    } 
+    }
     catch (err) {
         next(err)
     }
@@ -467,7 +655,7 @@ exports.changeProfil = async (req, res, next) => {
             if (!data) throw new customError('PictureCompanyUpdateError', `${label} not modified`)
             return res.json({ message: 'picture updated' })
         }
-    } 
+    }
     catch (err) {
         next(err)
     }
@@ -496,7 +684,7 @@ exports.changeStatus = async (req, res, next) => {
         if (!data) throw new customError('StatusCompanyUpdateError', `${label} not modified`)
 
         return res.json({ message: `${label} ${status === 'actif' ? 'active' : 'inactive'}` })
-    } 
+    }
     catch (err) {
         next(err)
     }
@@ -517,7 +705,7 @@ exports.delete = async (req, res, next) => {
         if (!data) throw new customError('CompanyAlreadyDeleted', `${label} already deleted`)
 
         return res.json({ message: `${label} deleted` })
-    } 
+    }
     catch (err) {
         next(err)
     }

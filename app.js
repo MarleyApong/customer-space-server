@@ -4,6 +4,7 @@ const helmet = require('helmet')
 const morgan = require('morgan')
 const sequelize = require('./config/db')
 const seedDB = require('./seeders')
+const fs = require('fs')
 require('./associations')
 
 
@@ -37,12 +38,12 @@ const event = require('./routes/event')
 const app = express()
 
 // MANAGER REQUEST FOR CROSS ORIGN
-const corsOption = {
-    origin: '*',
-    allowedHeaders: ['Content-Type', 'Authorization', 'Access-Control-Allow-Headers'],
-}
+// const corsOption = {
+//     origin: '*',
+//     allowedHeaders: ['Content-Type', 'Authorization', 'Access-Control-Allow-Headers'],
+// }
 
-app.use(cors(corsOption))
+app.use(cors())
 
 // UPGRADE PROTECTION
 app.use(helmet({
@@ -88,6 +89,22 @@ app.use('/averages', averagesRouter)
 app.use((req, res, next) => {
     res.status(404).send("Fuck you !")
 })
+
+const createDirectoryIfNotExists = (directoryPath) => {
+    if (!fs.existsSync(directoryPath)) {
+        fs.mkdirSync(directoryPath)
+        console.log(`Directory '${directoryPath}' created successfully.`)
+    } 
+    else {
+        console.log(`Directory '${directoryPath}' already exists.`)
+    }
+}
+
+// CREATE FOLDER 'public', 'imgs', 'product' and 'profile' IF NOT EXIST
+createDirectoryIfNotExists('./public')
+createDirectoryIfNotExists('./public/imgs')
+createDirectoryIfNotExists('./public/imgs/product')
+createDirectoryIfNotExists('./public/imgs/profile')
 
 // SYNCHRONIZATION
 const init = async () => {
