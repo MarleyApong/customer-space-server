@@ -141,43 +141,12 @@ exports.getOne = async (req, res, next) => {
 exports.getSurveysByUser = async (req, res, next) => {
     const page = parseInt(req.query.page) || 1
     const limit = parseInt(req.query.limit) || 10
-    const status = req.query.status
     const sort = req.query.sort || 'desc'
     const filter = req.query.filter || 'createdAt'
-    const keyboard = req.query.k
-
 
     try {
         const id = req.params.id
         if (!id) throw new customError('MissingParams', 'missing parameter')
-
-        // let whereClause = {}
-        // if (status) {
-        //     if (status !== 'actif' && status !== 'inactif') {
-        //         whereClause.idStatus = status
-        //     }
-        //     else {
-        //         const statusData = await Status.findOne({ where: { name: status } })
-        //         whereClause.idStatus = statusData.id
-        //     }
-        // }
-
-        // if (keyboard) {
-        //     if (filter !== 'createdAt' && filter !== 'updateAt' && filter !== 'deletedAt') {
-        //         whereClause = {
-        //             [filter]: {
-        //                 [Op.like]: `%${keyboard}%`,
-        //             },
-        //         }
-        //     }
-        //     else {
-        //         whereClause = {
-        //             [filter]: {
-        //                 [Op.between]: [new Date(keyboard), new Date(keyboard + " 23:59:59")]
-        //             },
-        //         }
-        //     }
-        // }
 
         const data = await Surveys.findAll({
             include: [
@@ -195,7 +164,9 @@ exports.getSurveysByUser = async (req, res, next) => {
                         }
                     ]
                 }
-            ]
+            ],
+            offset: (page - 1) * limit,
+            limit: limit,
         })
 
         const inProgress = await Surveys.count({
@@ -285,7 +256,7 @@ exports.add = async (req, res, next) => {
         // COUNT SURVEY
         const countSurvey = await Surveys.count({ where: { idCompany: idCompany } })
 
-        if(countSurvey >= 5 ) {
+        if (countSurvey >= 5) {
             throw new customError('AddSurveyError', `the limit for surveys is set at 5`)
         }
 

@@ -24,7 +24,9 @@
     "sequelize-cli": "^6.6.2",
     "sharp": "^0.33.2",
     "socket.io": "^4.7.4",
-    "uuid": "^9.0.1"
+    "uuid": "^9.0.1",
+    "vite": "^5.2.7",
+    "vite-plugin-ssr": "^0.4.142"
   },
   "devDependencies": {
     "morgan": "^1.10.0",

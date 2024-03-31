@@ -57,8 +57,6 @@ exports.getAll = async (req, res, next) => {
         const totalElements = await Orders.count()
         if (!data) throw new customError('NotFound', `${label} not found`)
 
-        console.log('data', data);
-
         return res.json({
             content: {
                 data: data.rows,
@@ -449,29 +447,34 @@ exports.getOrderByCompany = async (req, res, next) => {
             ]
         })
 
+        console.log("data=============", data);
+
         if (!data) throw new customError('NotFound', `${label} not found`)
 
         data.forEach(order => {
-            order.OrdersProducts.forEach(orderProduct => {
-                const product = orderProduct.Product
-                if (product && product.picture) {
-                    const picturePath = 'public' + product.picture;
-                    if (fs.existsSync(picturePath)) {
-                        const imageContent = fs.readFileSync(picturePath)
-                        const extension = path.extname(picturePath).toLowerCase()
-                        let mimeType
-                        if (extension === '.png') {
-                            mimeType = 'image/png'
-                        } else if (extension === '.jpg' || extension === '.jpeg') {
-                            mimeType = 'image/jpeg'
-                        } else {
-                            throw new customError('InvalidImageType', 'Unsupported image type')
+            if (order.OrdersProducts && order.OrdersProducts.length > 0) {
+                order.OrdersProducts.forEach(orderProduct => {
+                    const product = orderProduct.Product;
+                    if (product && product.picture) {
+                        const picturePath = 'public' + product.picture;
+                        if (fs.existsSync(picturePath)) {
+                            const imageContent = fs.readFileSync(picturePath);
+                            const extension = path.extname(picturePath).toLowerCase();
+                            let mimeType;
+                            if (extension === '.png') {
+                                mimeType = 'image/png';
+                            } else if (extension === '.jpg' || extension === '.jpeg') {
+                                mimeType = 'image/jpeg';
+                            } else {
+                                throw new customError('InvalidImageType', 'Unsupported image type');
+                            }
+                            product.picture = `data:${mimeType};base64,${imageContent.toString('base64')}`;
                         }
-                        product.picture = `data:${mimeType};base64,${imageContent.toString('base64')}`
                     }
-                }
-            })
-        })
+                });
+            }
+        });
+        
 
         return res.json({
             content: {
@@ -584,7 +587,7 @@ exports.add = async (req, res, next) => {
         if (!Array.isArray(orders) || orders.length === 0) {
             throw new customError('MissingData', 'missing data')
         }
-
+        
         // CHECK THAT EACH ORDER HAS ALL REQUIRED PROPERTIES
         const requiredProps = ['idProduct', 'name', 'price', 'quantity', 'total']
         for (const order of orders) {
@@ -594,7 +597,7 @@ exports.add = async (req, res, next) => {
                 }
             }
         }
-
+        
         // CHECK FOR THE PRESENCE OF THE ID TABLE AND WEBPAGECOMPANY
         if (!idTable || !webPageCompany) {
             throw new customError('MissingData', 'missing data')

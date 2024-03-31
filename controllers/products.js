@@ -1,4 +1,6 @@
+
 const fs = require('fs')
+const path = require('path')
 const multer = require('multer')
 const { Op } = require('sequelize')
 const { v4: uuid } = require('uuid')
@@ -73,9 +75,29 @@ exports.getAll = async (req, res, next) => {
             offset: (page - 1) * limit,
             order: [[filter, sort]],
         })
-
-        const totalElements = await Products.count()
         if (!data) throw new customError('ProductsNotFound', `${label} not found`)
+        const totalElements = await Products.count()
+
+        // FOR EACH PRODUCT, PROCESS THE IMAGE
+        // for (let i = 0; i < data.length; i++) {
+        //     const product = data[i]
+        //     if (product.picture) {
+        //         const picturePath = 'public' + product.picture
+        //         if (fs.existsSync(picturePath)) {
+        //             const imageContent = fs.readFileSync(picturePath)
+        //             const extension = path.extname(picturePath).toLowerCase()
+        //             let mimeType
+        //             if (extension === '.png') {
+        //                 mimeType = 'image/png'
+        //             } else if (extension === '.jpg' || extension === '.jpeg') {
+        //                 mimeType = 'image/jpeg'
+        //             } else {
+        //                 throw new customError('InvalidImageType', 'Unsupported image type')
+        //             }
+        //             product.picture = `data:${mimeType};base64,${imageContent.toString('base64')}`
+        //         }
+        //     }
+        // }
 
         return res.json({
             content: {
@@ -123,6 +145,40 @@ exports.getOne = async (req, res, next) => {
             ]
         })
         if (!data) throw new customError('ProductNotFound', `${label} not found`)
+
+        // GET PATH PICTURE
+        const picturePath = 'public' + data.picture
+
+        // CHECK PICTURE
+        if (!data.picture) {
+            return res.json({ content: data })
+        }
+
+        // CHECK FILE
+        if (!fs.existsSync(picturePath)) {
+            throw new customError('ImageNotFound', 'Image not found');
+        }
+
+        // READ IMAGE CONTENT
+        const imageContent = fs.readFileSync(picturePath)
+
+        // GET EXTENSION OF PICTURE
+        const extension = path.extname(picturePath).toLowerCase()
+
+        // DETERMINE MIME TYPE BASED ON FILE EXTENSION
+        let mimeType
+        if (extension === '.png') {
+            mimeType = 'image/png'
+        }
+        else if (extension === '.jpg' || extension === '.jpeg') {
+            mimeType = 'image/jpeg'
+        }
+        else {
+            throw new customError('InvalidImageType', 'Unsupported image type')
+        }
+
+        // PUT IMAGE CONTENT IN OBJET DATA
+        data.picture = `data:${mimeType};base64,${imageContent.toString('base64')}`
 
         return res.json({ content: data })
     }
@@ -216,6 +272,39 @@ exports.getProductByUser = async (req, res, next) => {
             where: whereClause
         })
 
+        data.forEach(product => {
+            if (product && product.picture) {
+                // GET PATH PICTURE
+                const picturePath = 'public' + product.picture
+
+                // CHECK FILE
+                if (!fs.existsSync(picturePath)) {
+                    throw new customError('ImageNotFound', 'Image not found');
+                }
+
+                // READ IMAGE CONTENT
+                const imageContent = fs.readFileSync(picturePath)
+
+                // GET EXTENSION OF PICTURE
+                const extension = path.extname(picturePath).toLowerCase()
+
+                // DETERMINE MIME TYPE BASED ON FILE EXTENSION
+                let mimeType
+                if (extension === '.png') {
+                    mimeType = 'image/png'
+                }
+                else if (extension === '.jpg' || extension === '.jpeg') {
+                    mimeType = 'image/jpeg'
+                }
+                else {
+                    throw new customError('InvalidImageType', 'Unsupported image type')
+                }
+
+                // PUT IMAGE CONTENT IN OBJET DATA
+                product.picture = `data:${mimeType};base64,${imageContent.toString('base64')}`
+            }
+        })
+
         return res.json({
             totalCompanies: totalCount,
             content: {
@@ -243,7 +332,6 @@ exports.getProductByCompany = async (req, res, next) => {
     const filter = req.query.filter || 'name'
     const status = req.query.status
     const keyboard = req.query.k
-
 
     try {
         let whereClause = {}
@@ -311,6 +399,39 @@ exports.getProductByCompany = async (req, res, next) => {
             where: whereClause
         })
 
+        data.forEach(product => {
+            if (product && product.picture) {
+                // GET PATH PICTURE
+                const picturePath = 'public' + product.picture
+
+                // CHECK FILE
+                if (!fs.existsSync(picturePath)) {
+                    throw new customError('ImageNotFound', 'Image not found');
+                }
+
+                // READ IMAGE CONTENT
+                const imageContent = fs.readFileSync(picturePath)
+
+                // GET EXTENSION OF PICTURE
+                const extension = path.extname(picturePath).toLowerCase()
+
+                // DETERMINE MIME TYPE BASED ON FILE EXTENSION
+                let mimeType
+                if (extension === '.png') {
+                    mimeType = 'image/png'
+                }
+                else if (extension === '.jpg' || extension === '.jpeg') {
+                    mimeType = 'image/jpeg'
+                }
+                else {
+                    throw new customError('InvalidImageType', 'Unsupported image type')
+                }
+
+                // PUT IMAGE CONTENT IN OBJET DATA
+                product.picture = `data:${mimeType};base64,${imageContent.toString('base64')}`
+            }
+        })
+
         return res.json({
             totalCompanies: totalCount,
             content: {
@@ -360,8 +481,6 @@ exports.add = async (req, res, next) => {
         if (req.file) {
             picturePath = req.file.path // PATH
         }
-
-        
 
         // HERE, WE DELETE THE WORD 'PUBLIC' IN THE PATH
         const pathWithoutPublic = picturePath.substring(6)
@@ -503,7 +622,7 @@ exports.delete = async (req, res, next) => {
         if (!data) throw new customError('ProductAlreadyDeleted', `${label} already deleted`)
 
         return res.json({ message: `${label} deleted` })
-    } 
+    }
     catch (err) {
         next(err)
     }
@@ -524,7 +643,7 @@ exports.deleteTrash = async (req, res, next) => {
         if (!data) throw new customError('ProductAlreadyDeleted', `${label} already deleted`)
 
         return res.json({ message: `${label} deleted` })
-    } 
+    }
     catch (err) {
         next(err)
     }
@@ -542,7 +661,7 @@ exports.restore = async (req, res, next) => {
         if (!data) throw new customError('ProductAlreadyRestored', `${label} already restored or does not exist`)
 
         return res.json({ message: `${label} restored` })
-    } 
+    }
     catch (err) {
         next(err)
     }
